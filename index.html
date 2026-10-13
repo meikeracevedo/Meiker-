@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101820">
+  <title>Meiker Battle Royale 3D</title>
+  <style>
+    *{box-sizing:border-box}
+    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101820;font-family:system-ui,Arial,sans-serif}
+    #game{position:fixed;inset:0;width:100%;height:100%;border:0;background:#101820}
+    #network{position:fixed;z-index:5;top:12px;right:12px;padding:8px 11px;border:1px solid #ffffff30;border-radius:10px;background:#0b182bdd;color:#eaf7ff;font-size:12px;box-shadow:0 2px 12px #0005;pointer-events:none}
+    #network .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#f0b429;margin-right:6px}
+    #network.online .dot{background:#42e68a}
+  </style>
+</head>
+<body>
+  <iframe id="game" src="/meiker-battle-royale-3d.html" title="Meiker Battle Royale 3D"></iframe>
+  <div id="network"><span class="dot"></span><span id="status">Conectando al servidor...</span></div>
+  <script>
+    (() => {
+      const panel = document.getElementById('network');
+      const status = document.getElementById('status');
+      let socket;
+      let retryDelay = 1500;
+      function connect() {
+        const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        socket = new WebSocket(protocol + '//' + location.host + '/ws');
+        socket.addEventListener('open', () => {
+          panel.classList.add('online');
+          status.textContent = 'WebSocket conectado';
+          retryDelay = 1500;
+        });
+        socket.addEventListener('message', event => {
+          let message;
+          try { message = JSON.parse(event.data); } catch { return; }
+          if (message.type === 'welcome') {
+            status.textContent = 'En línea · ' + (message.count || 1) + ' jugador(es)';
+          } else if (message.type === 'count') {
+            status.textContent = 'En línea · ' + message.count + ' jugador(es)';
+          }
+        });
+        socket.addEventListener('close', () => {
+          panel.classList.remove('online');
+          status.textContent = 'Reconectando...';
+          setTimeout(connect, retryDelay);
+          retryDelay = Math.min(retryDelay * 1.5, 10000);
+        });
+        socket.addEventListener('error', () => {
+          panel.classList.remove('online');
+          status.textContent = 'Conexión inestable';
+        });
+      }
+      connect();
+    })();
+  </script>
+</body>
+</html>

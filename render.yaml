@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: meiker-battle-royale
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /healthz
+    autoDeploy: true
