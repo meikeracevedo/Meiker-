@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Meiker Battle Royale 3D</title>
+<style>
+*{box-sizing:border-box}body{margin:0;overflow:hidden;background:#101820;color:#fff;font-family:system-ui,Arial}canvas{display:block}
+#hud{position:fixed;inset:0;pointer-events:none;padding:14px;display:flex;flex-direction:column;justify-content:space-between;text-shadow:0 2px 4px #000}
+#top{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}.panel{background:#0b182bcc;border:1px solid #ffffff30;border-radius:12px;padding:10px 14px;backdrop-filter:blur(5px)}
+#health{height:9px;width:180px;background:#492d32;border-radius:8px;overflow:hidden;margin-top:6px}#healthbar{height:100%;width:100%;background:#42e68a}
+#help{align-self:center;text-align:center;max-width:560px}#start{pointer-events:auto;border:0;border-radius:10px;padding:12px 20px;font-weight:800;background:#ffb52e;color:#17202a;font-size:16px;cursor:pointer}
+#cross{position:fixed;left:50%;top:50%;width:18px;height:18px;transform:translate(-50%,-50%);pointer-events:none}
+#cross:before,#cross:after{content:"";position:absolute;background:#fff;box-shadow:0 0 3px #000}#cross:before{width:2px;height:18px;left:8px}#cross:after{height:2px;width:18px;top:8px}
+#msg{font-size:20px;font-weight:800}#mobile{pointer-events:auto;display:none;position:fixed;bottom:18px;left:0;right:0;justify-content:space-between;padding:0 14px}
+#mobile button{border:1px solid #ffffff55;border-radius:50%;width:54px;height:54px;background:#102333bb;color:#fff;font-size:20px}
+@media(max-width:700px){#mobile{display:flex}#help{font-size:12px}#health{width:125px}}
+</style>
+</head>
+<body>
+<div id="hud"><div id="top"><div class="panel"><b>🔥 MEIKER BATTLE ROYALE 3D</b><div id="health"><div id="healthbar"></div></div><small id="healthtext">Vida: 100</small></div><div class="panel">Bots eliminados: <b id="kills">0</b> / <span id="total">8</span></div></div>
+<div id="help" class="panel"><div id="msg">¡Sobrevive y elimina a los bots!</div><small>WASD mover · Ratón mirar · Clic disparar · Espacio saltar · Shift correr · R reiniciar</small><br><button id="start">JUGAR / CAPTURAR RATÓN</button></div></div>
+<div id="cross"></div>
+<div id="mobile"><button data-key="KeyW">↑</button><button data-key="KeyA">←</button><button data-key="KeyS">↓</button><button data-key="KeyD">→</button><button id="shoot">✦</button></div>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x91c9e8);scene.fog=new THREE.Fog(0x91c9e8,55,145);
+const camera=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.1,250);
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;document.body.appendChild(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xd9f1ff,0x3b5030,2));const sun=new THREE.DirectionalLight(0xfff0d1,3);sun.position.set(-30,55,25);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);scene.add(sun);
+const mat=(color,roughness=.9)=>new THREE.MeshStandardMaterial({color,roughness});
+const grass=mat(0x57904a),wood=mat(0x76503a),roof=mat(0x9a4933),wall=mat(0xd7c8a1),leaf=mat(0x286b43),trunk=mat(0x63452e),dark=mat(0x253747),blue=mat(0x2177a8),skin=mat(0xc58c66),red=mat(0xb93b31);
+function box(x,y,z,sx,sy,sz,m,shadow=true){const o=new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz),m);o.position.set(x,y,z);o.castShadow=shadow;o.receiveShadow=true;scene.add(o);return o}
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(220,220),grass);ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+box(0,.005,0,14,.02,200,mat(0x817d6a),false);box(0,.012,0,200,.02,12,mat(0x817d6a),false);
+for(let i=0;i<22;i++){let x=(Math.random()-.5)*170,z=(Math.random()-.5)*170;if(Math.abs(x)<13||Math.abs(z)<11)continue;
+if(i%3===0){box(x,1.5,z,7,3,7,wall);box(x,3.2,z,8,.5,8,roof);box(x,1,z+3.55,1.2,1.7,.15,mat(0x3c5960));box(x-1.7,1.9,z+3.56,1.2,.8,.15,blue)}
+else box(x,.65,z,2,1.3,2,wood)}
+for(let i=0;i<95;i++){let x=(Math.random()-.5)*190,z=(Math.random()-.5)*190;if(Math.abs(x)<12||Math.abs(z)<10)continue;const t=new THREE.Mesh(new THREE.CylinderGeometry(.18,.28,2.1,7),trunk);t.position.set(x,1,z);t.castShadow=true;scene.add(t);const c=new THREE.Mesh(new THREE.ConeGeometry(1.25,3.5,7),leaf);c.position.set(x,3.5,z);c.castShadow=true;scene.add(c)}
+for(let i=0;i<18;i++){const a=i*Math.PI*2/18;const p=new THREE.Mesh(new THREE.CylinderGeometry(.16,.16,2.4,8),mat(0xe8d5a0));p.position.set(Math.cos(a)*86,1.2,Math.sin(a)*86);scene.add(p)}
+const player={pos:new THREE.Vector3(0,0,3),vel:new THREE.Vector3(),yaw:0,pitch:0,health:100,grounded:true};
+const avatar=new THREE.Group();scene.add(avatar);const body=new THREE.Mesh(new THREE.CapsuleGeometry(.42,.65,4,8),blue);body.position.y=1;body.castShadow=true;avatar.add(body);
+const head=new THREE.Mesh(new THREE.SphereGeometry(.28,12,10),skin);head.position.y=1.65;head.castShadow=true;avatar.add(head);
+const gun=new THREE.Mesh(new THREE.BoxGeometry(.18,.16,.85),dark);gun.position.set(.32,1.12,-.52);avatar.add(gun);
+const bots=[],botMat=mat(0xb84036),botHead=mat(0xd6a078);
+function makeBot(x,z){const g=new THREE.Group();const b=new THREE.Mesh(new THREE.CapsuleGeometry(.4,.6,4,8),botMat);b.position.y=.9;b.castShadow=true;g.add(b);const h=new THREE.Mesh(new THREE.SphereGeometry(.25,10,8),botHead);h.position.y=1.55;g.add(h);g.position.set(x,0,z);scene.add(g);bots.push({g,hp:100,alive:true,cool:Math.random()*2})}
+for(let i=0;i<8;i++){let a=i*Math.PI/4,r=18+Math.random()*24;makeBot(Math.cos(a)*r,Math.sin(a)*r)}
+const keys={};let started=false,locked=false,kills=0,last=performance.now(),fireCooldown=0;
+const healthbar=document.getElementById('healthbar'),healthtext=document.getElementById('healthtext'),msg=document.getElementById('msg');document.getElementById('total').textContent=bots.length;
+document.getElementById('start').onclick=()=>{started=true;renderer.domElement.requestPointerLock?.();msg.textContent='¡Combate activo!';};
+document.addEventListener('pointerlockchange',()=>locked=document.pointerLockElement===renderer.domElement);
+document.addEventListener('mousemove',e=>{if(!locked||!started)return;player.yaw-=e.movementX*.0022;player.pitch=Math.max(-.6,Math.min(.55,player.pitch-e.movementY*.002));});
+addEventListener('keydown',e=>{keys[e.code]=true;if(e.code==='Space'&&player.grounded){player.vel.y=7;player.grounded=false}if(e.code==='KeyR')reset()});
+addEventListener('keyup',e=>keys[e.code]=false);
+addEventListener('mousedown',e=>{if(e.button===0&&started)shoot()});document.getElementById('shoot').onclick=()=>shoot();
+document.querySelectorAll('[data-key]').forEach(b=>{const k=b.dataset.key;b.addEventListener('pointerdown',e=>{e.preventDefault();keys[k]=true});for(const ev of ['pointerup','pointerleave','pointercancel'])b.addEventListener(ev,()=>keys[k]=false)});
+function shoot(){if(!started||fireCooldown>0)return;fireCooldown=.22;const dir=new THREE.Vector3(-Math.sin(player.yaw),Math.sin(player.pitch),-Math.cos(player.yaw)).normalize();let best=null,bestDot=.985;for(const bot of bots){if(!bot.alive)continue;const target=bot.g.position.clone().add(new THREE.Vector3(0,1,0)),delta=target.clone().sub(camera.position),dist=delta.length();delta.normalize();const dot=dir.dot(delta);if(dot>bestDot&&dist<65){best=bot;bestDot=dot}}if(best){best.hp-=50;if(best.hp<=0){best.alive=false;best.g.visible=false;kills++;document.getElementById('kills').textContent=kills;if(kills===bots.length){msg.textContent='¡VICTORIA! Eres el campeón 🏆';started=false}}}}
+function reset(){player.pos.set(0,0,3);player.vel.set(0,0,0);player.health=100;kills=0;document.getElementById('kills').textContent='0';bots.forEach((b,i)=>{b.alive=true;b.hp=100;b.g.visible=true;const a=i*Math.PI/4,r=18+Math.random()*24;b.g.position.set(Math.cos(a)*r,0,Math.sin(a)*r)});started=false;msg.textContent='¡Sobrevive y elimina a los bots!';updateHealth()}
+function updateHealth(){healthbar.style.width=player.health+'%';healthtext.textContent='Vida: '+Math.max(0,Math.ceil(player.health))}
+function animate(now){requestAnimationFrame(animate);const dt=Math.min((now-last)/1000,.04);last=now;fireCooldown=Math.max(0,fireCooldown-dt);
+if(started){const forward=new THREE.Vector3(-Math.sin(player.yaw),0,-Math.cos(player.yaw)),right=new THREE.Vector3(Math.cos(player.yaw),0,-Math.sin(player.yaw)),move=new THREE.Vector3();if(keys.KeyW||keys.ArrowUp)move.add(forward);if(keys.KeyS||keys.ArrowDown)move.sub(forward);if(keys.KeyD||keys.ArrowRight)move.add(right);if(keys.KeyA||keys.ArrowLeft)move.sub(right);if(move.lengthSq())move.normalize().multiplyScalar(keys.ShiftLeft?11:7);player.pos.addScaledVector(move,dt);player.vel.y-=18*dt;player.pos.y+=player.vel.y*dt;if(player.pos.y<0){player.pos.y=0;player.vel.y=0;player.grounded=true}player.pos.x=Math.max(-92,Math.min(92,player.pos.x));player.pos.z=Math.max(-92,Math.min(92,player.pos.z));avatar.position.set(player.pos.x,player.pos.y,player.pos.z);avatar.rotation.y=player.yaw;
+for(const bot of bots){if(!bot.alive)continue;const d=player.pos.clone().sub(bot.g.position),dist=d.length();if(dist>4&&dist<48){d.y=0;d.normalize();bot.g.position.addScaledVector(d,dt*1.3);bot.g.rotation.y=Math.atan2(-d.x,-d.z)}bot.cool-=dt;if(dist<30&&bot.cool<=0){bot.cool=1.1+Math.random();if(Math.random()<.34){player.health=Math.max(0,player.health-8);updateHealth();if(player.health<=0){msg.textContent='ELIMINADO — pulsa R para reintentar';started=false}}}}}
+const look=new THREE.Vector3(-Math.sin(player.yaw)*Math.cos(player.pitch),Math.sin(player.pitch),-Math.cos(player.yaw)*Math.cos(player.pitch));camera.position.set(player.pos.x,player.pos.y+2.25,player.pos.z).addScaledVector(look,-5.2);camera.lookAt(player.pos.x+look.x*8,player.pos.y+1.45+look.y*8,player.pos.z+look.z*8);renderer.render(scene,camera)}
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});animate(performance.now());
+</script>
+</body></html>
