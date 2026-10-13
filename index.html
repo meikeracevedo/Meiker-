@@ -1,58 +1,123 @@
 <!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#101820">
-  <title>Meiker Battle Royale 3D</title>
-  <style>
-    *{box-sizing:border-box}
-    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101820;font-family:system-ui,Arial,sans-serif}
-    #game{position:fixed;inset:0;width:100%;height:100%;border:0;background:#101820}
-    #network{position:fixed;z-index:5;top:12px;right:12px;padding:8px 11px;border:1px solid #ffffff30;border-radius:10px;background:#0b182bdd;color:#eaf7ff;font-size:12px;box-shadow:0 2px 12px #0005;pointer-events:none}
-    #network .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#f0b429;margin-right:6px}
-    #network.online .dot{background:#42e68a}
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#17251d">
+<title>Meiker Battle Royale 2D</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#17251d;color:#f4f3df;font-family:system-ui,Arial,sans-serif;touch-action:none}
+canvas{display:block;width:100%;height:100%;image-rendering:pixelated}
+#hud{position:fixed;inset:0;pointer-events:none;display:flex;flex-direction:column;justify-content:space-between;padding:12px;padding-top:max(12px,env(safe-area-inset-top));padding-bottom:max(12px,env(safe-area-inset-bottom));text-shadow:0 2px 3px #000}
+.row{display:flex;gap:8px;align-items:flex-start;justify-content:space-between}.card{background:#14231ddd;border:2px solid #71856b;border-radius:8px;padding:8px 11px;box-shadow:3px 3px 0 #0007;font-size:13px}.title{font-weight:900;letter-spacing:.5px;color:#ffd76a}.muted{color:#c5d2b9;font-size:11px}
+#healthOuter{height:9px;width:160px;background:#572f2a;border:1px solid #111;margin-top:5px}#healthBar{height:100%;width:100%;background:#64df83}
+#status{max-width:52vw;text-align:right}#overlay{position:fixed;inset:0;background:#0b1512bb;display:flex;align-items:center;justify-content:center;padding:20px;z-index:4}
+#modal{max-width:440px;width:100%;text-align:center;background:#1c3025;border:3px solid #9db28a;border-radius:12px;padding:22px;box-shadow:8px 8px 0 #0008}
+h1{margin:0 0 8px;font-size:clamp(25px,6vw,38px);color:#ffd76a}p{line-height:1.5;color:#e2e8d9}button{font:inherit;font-weight:800;color:#18251b;background:#ffd76a;border:0;border-radius:7px;padding:12px 18px;cursor:pointer;box-shadow:0 4px 0 #9b762a}
+#mobile{display:none;position:fixed;inset:auto 0 18px;justify-content:space-between;padding:0 18px;pointer-events:none;z-index:3}
+.pad{display:grid;grid-template-columns:repeat(3,44px);grid-template-rows:repeat(2,44px);gap:4px;pointer-events:auto}.pad button,.fire{background:#16271ddd;color:white;border:2px solid #a5b99a;box-shadow:0 3px 0 #0008;border-radius:8px;padding:0;width:44px;height:44px;font-size:18px}
+.pad [data-key="KeyW"]{grid-column:2}.pad [data-key="KeyA"]{grid-column:1;grid-row:2}.pad [data-key="KeyS"]{grid-column:2;grid-row:2}.pad [data-key="KeyD"]{grid-column:3;grid-row:2}.fire{width:66px;height:66px;border-radius:50%;font-size:22px;pointer-events:auto;background:#9c352b}
+@media(max-width:700px){#mobile{display:flex}.card{padding:7px 8px;font-size:11px}#healthOuter{width:115px}.muted{font-size:10px}}
+</style>
 </head>
 <body>
-  <iframe id="game" src="/meiker-battle-royale-3d.html" title="Meiker Battle Royale 3D"></iframe>
-  <div id="network"><span class="dot"></span><span id="status">Conectando al servidor...</span></div>
-  <script>
-    (() => {
-      const panel = document.getElementById('network');
-      const status = document.getElementById('status');
-      let socket;
-      let retryDelay = 1500;
-      function connect() {
-        const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-        socket = new WebSocket(protocol + '//' + location.host + '/ws');
-        socket.addEventListener('open', () => {
-          panel.classList.add('online');
-          status.textContent = 'WebSocket conectado';
-          retryDelay = 1500;
-        });
-        socket.addEventListener('message', event => {
-          let message;
-          try { message = JSON.parse(event.data); } catch { return; }
-          if (message.type === 'welcome') {
-            status.textContent = 'En línea · ' + (message.count || 1) + ' jugador(es)';
-          } else if (message.type === 'count') {
-            status.textContent = 'En línea · ' + message.count + ' jugador(es)';
-          }
-        });
-        socket.addEventListener('close', () => {
-          panel.classList.remove('online');
-          status.textContent = 'Reconectando...';
-          setTimeout(connect, retryDelay);
-          retryDelay = Math.min(retryDelay * 1.5, 10000);
-        });
-        socket.addEventListener('error', () => {
-          panel.classList.remove('online');
-          status.textContent = 'Conexión inestable';
-        });
-      }
-      connect();
-    })();
-  </script>
-</body>
-</html>
+<canvas id="game" aria-label="Juego Meiker 2D"></canvas>
+<div id="hud">
+  <div class="row">
+    <div class="card"><div class="title">⚔ MEIKER · 2D RETRO</div><div id="healthOuter"><div id="healthBar"></div></div><div id="healthText">Vida: 100</div></div>
+    <div class="card" id="status">Conectando al servidor…</div>
+  </div>
+  <div class="row">
+    <div class="card">Eliminaciones: <b id="kills">0</b><br><span class="muted">Mapa: Pueblo Viejo</span></div>
+    <div class="card muted" id="help">WASD / flechas: moverse · Ratón: apuntar · Clic: disparar</div>
+  </div>
+</div>
+<div id="mobile">
+  <div class="pad">
+    <button data-key="KeyW">▲</button><button data-key="KeyA">◀</button><button data-key="KeyS">▼</button><button data-key="KeyD">▶</button>
+  </div>
+  <button class="fire" id="fire">✦</button>
+</div>
+<div id="overlay"><div id="modal"><h1>MEIKER BATTLE ROYALE</h1><p>Entra al Pueblo Viejo, encuentra a otros jugadores y elimínalos. Esta versión usa multijugador en tiempo real mediante WebSocket.</p><p class="muted">PC: WASD + ratón + clic. Móvil: botones de movimiento y toca el mapa para apuntar.</p><button id="play">ENTRAR A LA PARTIDA</button><p class="muted" id="connectHint">Esperando conexión al servidor…</p></div></div>
+<script>
+(() => {
+'use strict';
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+const statusEl=document.getElementById('status'),healthBar=document.getElementById('healthBar'),healthText=document.getElementById('healthText'),killsEl=document.getElementById('kills'),overlay=document.getElementById('overlay'),connectHint=document.getElementById('connectHint');
+const WORLD={w:1800,h:1200}, TILE=50;
+let vw=innerWidth,vh=innerHeight,dpr=1,camera={x:0,y:0},meId=null,players=[],bullets=[],socket=null,connected=false,playing=false,mouse={x:vw/2,y:vh/2,down:false},aimAngle=0,shooting=false,lastShot=0;
+const keys={}; const pressed={};
+function resize(){vw=innerWidth;vh=innerHeight;dpr=Math.min(devicePixelRatio||1,2);canvas.width=Math.floor(vw*dpr);canvas.height=Math.floor(vh*dpr);ctx.setTransform(dpr,0,0,dpr,0,0)}
+addEventListener('resize',resize);resize();
+const buildings=[
+{x:210,y:155,w:180,h:125},{x:480,y:135,w:135,h:160},{x:760,y:180,w:205,h:125},{x:1160,y:135,w:170,h:155},{x:1430,y:205,w:170,h:125},
+{x:130,y:430,w:145,h:170},{x:390,y:430,w:205,h:125},{x:690,y:420,w:150,h:185},{x:1010,y:445,w:195,h:130},{x:1360,y:430,w:230,h:170},
+{x:230,y:760,w:190,h:140},{x:520,y:800,w:150,h:175},{x:820,y:750,w:220,h:140},{x:1160,y:790,w:160,h:175},{x:1440,y:760,w:170,h:140},
+{x:700,y:1010,w:150,h:90},{x:1000,y:1010,w:210,h:95}
+];
+const trees=[];let seed=1947;function rand(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}
+for(let i=0;i<105;i++){const x=30+rand()*(WORLD.w-60),y=30+rand()*(WORLD.h-60);if(!buildings.some(b=>x>b.x-25&&x<b.x+b.w+25&&y>b.y-25&&y<b.y+b.h+25))trees.push({x,y,r:10+rand()*7})}
+function worldToScreen(x,y){return{x:x-camera.x+vw/2,y:y-camera.y+vh/2}}
+function roundedRect(x,y,w,h,r,fill,stroke){ctx.beginPath();ctx.roundRect(x,y,w,h,r);if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=3;ctx.stroke()}}
+function drawMap(){
+  ctx.fillStyle='#667b4b';ctx.fillRect(0,0,vw,vh);
+  const left=camera.x-vw/2,top=camera.y-vh/2;
+  // grass texture in a fixed world grid
+  ctx.fillStyle='#718653';for(let x=Math.floor(left/40)*40;x<left+vw+40;x+=40)for(let y=Math.floor(top/40)*40;y<top+vh+40;y+=40){if(((x/40+y/40)%3+3)%3===0){const p=worldToScreen(x,y);ctx.fillRect(p.x,p.y,2,2)}}
+  // old dusty roads crossing the village
+  ctx.fillStyle='#b8a77d';ctx.fillRect(worldToScreen(0,350).x,worldToScreen(0,350).y,WORLD.w,74);ctx.fillRect(worldToScreen(0,690).x,worldToScreen(0,690).y,WORLD.w,74);
+  ctx.fillRect(worldToScreen(610,0).x,worldToScreen(610,0).y,76,WORLD.h);ctx.fillRect(worldToScreen(1260,0).x,worldToScreen(1260,0).y,76,WORLD.h);
+  ctx.strokeStyle='#d2c49b';ctx.lineWidth=2;ctx.setLineDash([18,18]);for(const y of [387,727]){const p=worldToScreen(0,y);ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x+WORLD.w,p.y);ctx.stroke()}ctx.setLineDash([]);
+  for(const b of buildings){const p=worldToScreen(b.x,b.y);ctx.fillStyle='#4c3b2c';ctx.fillRect(p.x+6,p.y+7,b.w,b.h);ctx.fillStyle='#c9b68a';ctx.fillRect(p.x,p.y,b.w,b.h);ctx.fillStyle='#9a4936';ctx.fillRect(p.x-5,p.y-7,b.w+10,22);ctx.fillStyle='#e4d4a8';ctx.fillRect(p.x+10,p.y+30,b.w-20,7);ctx.fillStyle='#63462f';ctx.fillRect(p.x+b.w/2-11,p.y+b.h-34,22,34);ctx.fillStyle='#7c9a9b';ctx.fillRect(p.x+16,p.y+50,23,20);ctx.fillRect(p.x+b.w-39,p.y+50,23,20);ctx.strokeStyle='#594633';ctx.lineWidth=2;ctx.strokeRect(p.x,p.y,b.w,b.h)}
+  for(const t of trees){const p=worldToScreen(t.x,t.y);if(p.x<-30||p.x>vw+30||p.y<-30||p.y>vh+30)continue;ctx.fillStyle='#493b28';ctx.fillRect(p.x-3,p.y+3,6,t.r+8);ctx.fillStyle='#2f5938';ctx.beginPath();ctx.arc(p.x+2,p.y-3,t.r+3,0,Math.PI*2);ctx.fill();ctx.fillStyle='#477447';ctx.beginPath();ctx.arc(p.x-3,p.y-7,t.r*.65,0,Math.PI*2);ctx.fill()}
+  // border fence and minimap-like compass
+  ctx.strokeStyle='#d8c48c';ctx.lineWidth=8;ctx.strokeRect(worldToScreen(8,8).x,worldToScreen(8,8).y,WORLD.w-16,WORLD.h-16);
+}
+function drawPlayer(p,isMe){const s=worldToScreen(p.x,p.y);if(s.x<-40||s.x>vw+40||s.y<-40||s.y>vh+40)return;
+  ctx.save();ctx.translate(s.x,s.y);ctx.rotate(p.angle||0);
+  ctx.fillStyle='#0005';ctx.beginPath();ctx.ellipse(2,7,13,8,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=p.alive===false?'#565656':(isMe?'#267ac1':'#bb4438');ctx.strokeStyle=isMe?'#c4eaff':'#f7c8a7';ctx.lineWidth=2;
+  ctx.beginPath();ctx.arc(0,0,12,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.fillStyle='#edc59c';ctx.beginPath();ctx.arc(0,-3,6,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#303c43';ctx.fillRect(-3,-15,6,17);ctx.fillStyle='#e0e4d5';ctx.fillRect(-2,-22,4,12);
+  ctx.restore();
+  if(p.alive!==false){ctx.fillStyle='#261f1a';ctx.fillRect(s.x-17,s.y-25,34,4);ctx.fillStyle='#6ae080';ctx.fillRect(s.x-17,s.y-25,34*Math.max(0,p.hp/100),4)}
+  ctx.font='11px system-ui';ctx.textAlign='center';ctx.fillStyle='#fff';ctx.fillText((isMe?'Tú':(p.name||'Jugador')).slice(0,14),s.x,s.y+29);
+}
+function draw(){ctx.clearRect(0,0,vw,vh);drawMap();
+  for(const b of bullets){const a=worldToScreen(b.x,b.y);ctx.fillStyle='#ffe27a';ctx.beginPath();ctx.arc(a.x,a.y,4,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#ffb32f';ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(a.x-b.vx*.025,a.y-b.vy*.025);ctx.stroke()}
+  for(const p of players)drawPlayer(p,p.id===meId);
+  // center marker / crosshair
+  ctx.strokeStyle='#fff9';ctx.lineWidth=2;ctx.beginPath();ctx.arc(mouse.x,mouse.y,8,0,Math.PI*2);ctx.moveTo(mouse.x-13,mouse.y);ctx.lineTo(mouse.x-5,mouse.y);ctx.moveTo(mouse.x+5,mouse.y);ctx.lineTo(mouse.x+13,mouse.y);ctx.moveTo(mouse.x,mouse.y-13);ctx.lineTo(mouse.x,mouse.y-5);ctx.moveTo(mouse.x,mouse.y+5);ctx.lineTo(mouse.x,mouse.y+13);ctx.stroke();
+  const me=players.find(p=>p.id===meId);if(me){healthBar.style.width=Math.max(0,me.hp)+'%';healthText.textContent='Vida: '+Math.max(0,Math.ceil(me.hp));killsEl.textContent=me.kills||0;camera.x=me.x;camera.y=me.y}
+  requestAnimationFrame(draw);
+}
+function send(obj){if(socket&&socket.readyState===WebSocket.OPEN)socket.send(JSON.stringify(obj))}
+function connect(){const proto=location.protocol==='https:'?'wss:':'ws:';socket=new WebSocket(proto+'//'+location.host+'/ws');
+ socket.addEventListener('open',()=>{connected=true;statusEl.textContent='● Servidor conectado';connectHint.textContent='Servidor conectado. Ya puedes entrar.';send({type:'join',name:'Meiker'+Math.floor(100+Math.random()*900)})});
+ socket.addEventListener('message',e=>{let m;try{m=JSON.parse(e.data)}catch{return}
+  if(m.type==='welcome'){meId=m.id;players=m.players||[];statusEl.textContent='● En línea · '+(m.count||players.length)+' jugador(es)';}
+  else if(m.type==='state'){players=m.players||[];bullets=m.bullets||[];const me=players.find(p=>p.id===meId);if(me&&me.alive===false){statusEl.textContent='Has sido eliminado · reapareces en unos segundos'}else if(playing)statusEl.textContent='● En partida · '+players.filter(p=>p.alive!==false).length+' vivos';}
+  else if(m.type==='count'){statusEl.textContent='● En línea · '+m.count+' jugador(es)'}
+  else if(m.type==='notice'){connectHint.textContent=m.text}
+ });
+ socket.addEventListener('close',()=>{connected=false;statusEl.textContent='Sin conexión · reconectando';connectHint.textContent='Se perdió la conexión. Reconectando…';setTimeout(connect,1800)});
+ socket.addEventListener('error',()=>{connected=false;statusEl.textContent='Error de conexión'});
+}
+function screenToWorld(x,y){return{x:x+camera.x-vw/2,y:y+camera.y-vh/2}}
+function updateAim(x,y){mouse.x=x;mouse.y=y;const target=screenToWorld(x,y),me=players.find(p=>p.id===meId);if(me)aimAngle=Math.atan2(target.y-me.y,target.x-me.x)}
+canvas.addEventListener('pointermove',e=>{updateAim(e.clientX,e.clientY)});
+canvas.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'){mouse.down=true;updateAim(e.clientX,e.clientY);shoot()}else{updateAim(e.clientX,e.clientY);shoot()}});
+addEventListener('pointerup',()=>mouse.down=false);
+function shoot(){if(!playing||!connected)return;const now=performance.now();if(now-lastShot<180)return;lastShot=now;send({type:'shoot',angle:aimAngle})}
+document.getElementById('fire').addEventListener('pointerdown',e=>{e.preventDefault();shoot()});
+addEventListener('keydown',e=>{keys[e.code]=true;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault()});
+addEventListener('keyup',e=>keys[e.code]=false);
+document.querySelectorAll('[data-key]').forEach(b=>{const k=b.dataset.key;b.addEventListener('pointerdown',e=>{e.preventDefault();keys[k]=true});for(const ev of ['pointerup','pointerleave','pointercancel'])b.addEventListener(ev,()=>keys[k]=false)});
+document.getElementById('play').addEventListener('click',()=>{if(!connected){connectHint.textContent='Aún no conecta. Espera o revisa el servidor de Render.';return}playing=true;overlay.style.display='none';send({type:'start'})});
+setInterval(()=>{if(!playing||!connected)return;let x=0,y=0;if(keys.KeyA||keys.ArrowLeft)x--;if(keys.KeyD||keys.ArrowRight)x++;if(keys.KeyW||keys.ArrowUp)y--;if(keys.KeyS||keys.ArrowDown)y++;const n=Math.hypot(x,y)||1;x/=n;y/=n;send({type:'input',x,y,angle:aimAngle})},50);
+setInterval(()=>{if(connected)send({type:'heartbeat'})},10000);
+connect();draw();
+})();
+</script>
+</body></html>
