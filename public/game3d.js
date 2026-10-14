@@ -63,6 +63,7 @@ function sfx(name, vol = 1, arg) {
     case 'heal': [440, 554, 660].forEach((f, i) => tone(t + i * 0.08, 'sine', f, 0, 0.14, 0.18 * v)); break;
     case 'kill': [523, 659, 784, 1047].forEach((f, i) => tone(t + i * 0.06, 'triangle', f, 0, 0.14, 0.22 * v)); break;
     case 'die': tone(t, 'sawtooth', 320, 50, 0.6, 0.22 * v); break;
+    case 'slam': noise(t, 0.6, 'lowpass', 900, 50, 1.1 * v); tone(t, 'sine', 90, 30, 0.5, 0.7 * v); break;
     case 'empty': tone(t, 'square', 900, 0, 0.03, 0.08 * v); break;
     case 'reload': noise(t, 0.05, 'bandpass', 1200, 0, 0.3 * v); noise(t + 0.25, 0.05, 'bandpass', 900, 0, 0.3 * v); break;
     case 'reloaded': noise(t, 0.04, 'bandpass', 2200, 0, 0.35 * v); tone(t + 0.05, 'square', 600, 0, 0.03, 0.08 * v); break;
@@ -353,7 +354,7 @@ class Avatar {
     const bone = (len) => { const m = new THREE.Mesh(GEO.seg, mat); m.scale.y = len; m.position.y = -len / 2; return m; };
     const halo = new THREE.Mesh(GEO.halo, new THREE.MeshBasicMaterial({ map: haloTex, color, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
     halo.scale.set(2.2, 2.6, 1); halo.position.y = 1.05; this.halo = halo; g.add(halo);
-    const sh = new THREE.Mesh(GEO.shadow, shadowMat); sh.position.y = 0.04; g.add(sh);
+    const sh = this.shadow = new THREE.Mesh(GEO.shadow, shadowMat); sh.position.y = 0.04; g.add(sh);
     this.body = new THREE.Group(); this.body.position.y = 0.92; g.add(this.body);
     const spine = new THREE.Mesh(GEO.seg, mat); spine.scale.set(1.2, 0.56, 1.2); spine.position.y = 0.28; this.body.add(spine);
     const chest = new THREE.Mesh(GEO.joint, mat); chest.position.y = 0.5; chest.scale.set(1.4, 1, 1.2); this.body.add(chest);
@@ -412,9 +413,9 @@ class Avatar {
       } else g.visible = false;
       return;
     }
-    g.visible = f.ph !== PH.PLANE;
-    if (!g.visible) return;
+    g.visible = true;
     this.halo.visible = true;
+    this.shadow.visible = f.ph === PH.GROUND;
     g.position.set(f.x, f.y, f.z);
     g.rotation.set(0, f.yaw, 0);
     TMP_E.set(0, -f.yaw, 0); TMP_Q.setFromEuler(TMP_E);
@@ -428,10 +429,29 @@ class Avatar {
     this.setGun(f.w);
     const { legL, legR, armL, armR } = this;
     this.body.rotation.z = 0;
+    if (f.ph === PH.PLANE) {
+      // Volando: horizontal, un puño adelante
+      this.body.rotation.x = -1.35; this.body.position.y = 1.1 + Math.sin(G.time * 3) * 0.08;
+      legL.thigh.rotation.set(0.1, 0, -0.05); legR.thigh.rotation.set(0.25, 0, 0.05); legL.knee.rotation.x = 0.05; legR.knee.rotation.x = 0.35;
+      armR.up.rotation.set(Math.PI - 0.1, 0, 0); armR.el.rotation.x = 0; armL.up.rotation.set(0.3, 0, -0.5); armL.el.rotation.x = 0.6;
+      this.head.rotation.x = 0.9;
+      return;
+    }
     if (f.ph === PH.FALL || f.ph === PH.CHUTE) {
-      this.body.rotation.x = f.ph === PH.FALL ? -1.1 : 0;
-      legL.thigh.rotation.set(0.2, 0, -0.4); legR.thigh.rotation.set(0.2, 0, 0.4); legL.knee.rotation.x = legR.knee.rotation.x = 0.4;
-      armL.up.rotation.set(0, 0, -2.4); armR.up.rotation.set(0, 0, 2.4); armL.el.rotation.x = armR.el.rotation.x = 0;
+      // Cayendo como el hombre verde: piernas recogidas, brazos arriba
+      this.body.rotation.x = 0.15; this.body.position.y = 0.92;
+      legL.thigh.rotation.set(-0.9, 0, -0.3); legR.thigh.rotation.set(-0.5, 0, 0.3); legL.knee.rotation.x = 1.3; legR.knee.rotation.x = 1.0;
+      armL.up.rotation.set(Math.PI * 0.85, 0, -0.5); armR.up.rotation.set(Math.PI * 0.85, 0, 0.5); armL.el.rotation.x = armR.el.rotation.x = 0.3;
+      this.head.rotation.x = -0.4;
+      return;
+    }
+    if (this.landT > 0) {
+      // Aterrizaje: rodilla al piso y puño en el suelo
+      this.landT -= dt;
+      this.body.rotation.x = -0.35; this.body.position.y = 0.5;
+      legL.thigh.rotation.set(-1.4, 0, 0); legL.knee.rotation.x = 1.5; legR.thigh.rotation.set(0.6, 0, 0); legR.knee.rotation.x = 1.6;
+      armR.up.rotation.set(0.5, 0, 0.1); armR.el.rotation.x = 0.2; armL.up.rotation.set(-0.4, 0, -0.6); armL.el.rotation.x = 0.4;
+      this.head.rotation.x = 0.3; this.gun.visible = false;
       return;
     }
     if (f.sit) {
@@ -598,7 +618,7 @@ function offlineSession(opts) {
   return {
     kind: 'offline', myId: 1, match,
     update(dt) {
-      if (G.paused) return;
+      if (G.paused || G.loading) return;
       const me = G.me;
       if (me && me.alive) match.onState(1, stateMsg());
       match.update(dt);
@@ -776,8 +796,23 @@ function clearMatch() {
   feedEl.innerHTML = ''; toastsEl.innerHTML = '';
   if (planeMesh) planeMesh.visible = false;
 }
+const TIPS = ['Empiezas volando: escoge bien dónde caer', 'Meiker City tiene el mejor botín (y más rivales)', 'Toca tu arma para recargar, la otra para cambiar', 'Los carros sirven para huir de la zona', 'Con la mira el disparo es mucho más preciso', 'En dúo, tu compañero puede disparar desde el carro'];
+function showLoading(ms) {
+  const el = $('loadScreen'); el.classList.remove('out'); show(el, true);
+  $('lsTip').textContent = TIPS[Math.floor(Math.random() * TIPS.length)];
+  G.loading = true;
+  const t0 = performance.now();
+  const step = () => {
+    const k = Math.min(1, (performance.now() - t0) / ms);
+    $('lsFill').style.width = Math.round(k * 100) + '%';
+    if (k < 1) requestAnimationFrame(step);
+    else { el.classList.add('out'); G.loading = false; setTimeout(() => show(el, false), 400); }
+  };
+  requestAnimationFrame(step);
+}
 function startMatchView(start, spectator) {
   backdrop = null;
+  if (!spectator) showLoading(2400);
   clearMatch();
   buildWorld(start.seed);
   G.plane = start.plane; G.mode = start.mode; G.planeT = 0; G.snapAt = performance.now();
@@ -816,6 +851,7 @@ function onSnapshot(s, events) {
     let e = G.ents.get(id);
     if (!e) { e = { id, buf: [], run: 0 }; G.ents.set(id, e); }
     if (a[1] === -1) { e.alive = false; e.kills = a[2]; e.place = a[3]; if (G.me && id === G.myId) syncMe(e, null); continue; }
+    if (e.ph === PH.FALL && a[9] === PH.GROUND && id !== G.myId) { shockwave(a[1], a[2], a[3], false); const av0 = G.avatars.get(id); if (av0) av0.landT = 0.6; }
     Object.assign(e, { hp: a[6], sh: a[7], alive: true, ph: a[9], w: a[10], kills: a[11], life: a[12], reloading: !!a[17], prot: !!a[18], place: a[19], veh: a[20], seat: a[21] });
     if (a.length > 22) Object.assign(e, { iv: a[22], slots: [a[23], a[24]], ammo: [a[25], a[26]], cur: a[27], meds: a[28], shields: a[29], mag: [a[30], a[31]] });
     e.buf.push({ t: now, x: a[1], y: a[2], z: a[3], yaw: a[4], pitch: a[5], vx: a[13], vy: a[14], vz: a[15], g: a[16] });
@@ -843,11 +879,9 @@ function syncMe(e, a) {
   }
   if (e.iv != null && e.iv !== me.iv) { me.iv = e.iv; me.slots = e.slots.slice(); me.ammo = e.ammo.slice(); me.mag = e.mag.slice(); me.meds = e.meds; me.shields = e.shields; if (me.slots[me.cur] < 0 && me.slots[1 - me.cur] >= 0) setSlot(1 - me.cur); }
   if (!e.alive && me.alive) me.alive = false;
-  if (e.ph > me.ph && me.ph === PH.PLANE) {
-    me.ph = e.ph; me.x = a[1]; me.y = a[2]; me.z = a[3]; me.vx = me.vz = me.vy = 0; camYaw = a[4]; camPitch = -0.1;
-    let near = null, nd = 1e9;
-    for (const t of world.towns.concat(world.camps)) { const d = Math.hypot(t.x - me.x, t.z - me.z); if (d < nd) { nd = d; near = t; } }
-    toast(near ? (nd < 50 ? 'Apareciste en ' : 'Apareciste cerca de ') + near.name + '. Busca armas' : 'Busca armas y sobrevive', true);
+  if (!me.spawned) {
+    me.spawned = true; me.ph = e.ph; me.x = a[1]; me.y = a[2]; me.z = a[3]; me.flyY = a[2]; me.flyT = BR.FLY_TIME; me.vx = me.vz = me.vy = 0; camYaw = a[4]; camPitch = -0.35;
+    toast('Estás volando: muévete y toca Caer aquí', true);
   }
 }
 function nameOf(id) { const r = G.roster.get(id); return r ? r.name : '?'; }
@@ -964,22 +998,19 @@ function updateHud() {
   const me = G.me, z = G.zone;
   setText('hudAlive', String(G.alive));
   setText('hudKills', String(me ? me.kills : 0));
-  if (G.ping != null) setText('pingChip', G.netBad ? 'Señal débil' : G.ping + ' ms');
-  $('pingChip').classList.toggle('bad', !!G.netBad || (G.ping || 0) > 250);
+  setHidden('pingChip', !(G.netBad || (G.ping || 0) > 300));
   let zt = '';
-  const inPlane = me && me.ph === PH.PLANE;
-  if (me && me.prot) zt = 'Protección de aparición activa';
+  if (me && me.alive && me.ph === PH.PLANE) zt = 'Elige dónde caer';
   else if (z) {
     if (z.stage >= BR.ZONE.length - 1 && z.r <= 1) zt = 'Zona final';
-    else zt = z.shrinking ? 'La zona se cierra · ' + fmt(z.t) : 'Próximo cierre en ' + fmt(z.t);
+    else zt = z.shrinking ? 'Zona cerrándose ' + fmt(z.t) : fmt(z.t);
   }
-  const outside = me && me.alive && z && Math.hypot(me.x - z.cx, me.z - z.cz) > z.r;
-  if (outside) zt = 'Estás fuera de la zona · corre al círculo';
+  const outside = me && me.alive && me.ph === PH.GROUND && z && Math.hypot(me.x - z.cx, me.z - z.cz) > z.r;
+  if (outside) zt = 'Fuera de la zona';
   setText('hudZone', zt);
   $('hudZone').classList.toggle('warn', !!outside);
   if (me) {
     setStyle('hpBar', 'width', clamp(me.hp, 0, 100) + '%');
-    setText('hpText', String(Math.max(0, me.hp)));
     $('hpBar').parentElement.classList.toggle('low', me.hp < 30);
     setStyle('shBar', 'width', clamp(me.sh, 0, 100) + '%');
     for (let i = 0; i < 2; i++) {
@@ -988,7 +1019,7 @@ function updateHud() {
       const k = 'slot' + i;
       if (cache[k] !== label + ammo + me.cur) {
         cache[k] = label + ammo + me.cur;
-        el.querySelector('.slot-name').textContent = label; el.querySelector('b').textContent = ammo;
+        el.querySelector('.slot-name').textContent = label; el.querySelector('b').textContent = w >= 0 ? me.mag[i] + '/' + me.ammo[i] : '--';
         el.classList.toggle('on', me.cur === i && w >= 0); el.classList.toggle('empty', w >= 0 && me.mag[i] <= 0);
       }
     }
@@ -1010,7 +1041,12 @@ function updateHud() {
     else if (carNear) setText('carText', (carNear.seats[0] ? 'Subir de pasajero al ' : 'Manejar el ') + BR.VEHICLES[carNear.type].name);
     setHidden('speedChip', !G.myCar);
     if (G.myCar) setText('speedChip', Math.round(Math.abs(G.myCar.speed) * 3.6) + ' km/h');
-    $('fireBtn').classList.toggle('off', !!(me.veh && me.seat === 0));
+    $('fireBtn').classList.toggle('off', !!(me.veh && me.seat === 0) || me.ph !== PH.GROUND);
+    $('aimBtn').classList.toggle('off', me.ph !== PH.GROUND || !!(me.veh && me.seat === 0));
+    setHidden('dropBtn', !(me.alive && me.ph === PH.PLANE));
+    $('touch').classList.toggle('flying', me.alive && me.ph === PH.PLANE);
+    if (me.ph === PH.PLANE) setText('flyLeft', Math.ceil(me.flyT || 0) + ' s');
+    $('sprintBtn').classList.toggle('on', !!G.sprintOn);
     const near = me.alive && me.ph === PH.GROUND && !me.veh ? nearestItem(me, 2.6) : null;
     G.nearItem = near;
     const needBtn = near && near.k < 10 && !me.slots.includes(-1) && !me.slots.includes(near.k);
@@ -1072,11 +1108,11 @@ function drawMinimap() {
   // Compañeros
   for (const r of G.roster.values()) {
     if (r.team !== G.myTeam || r.id === G.myId) continue;
-    const e = G.ents.get(r.id); if (!e || !e.alive || e.rx == null || e.ph === PH.PLANE) continue;
+    const e = G.ents.get(r.id); if (!e || !e.alive || e.rx == null) continue;
     mctx.fillStyle = r.color; mctx.strokeStyle = '#0E0E10'; mctx.lineWidth = 2;
     mctx.beginPath(); mctx.arc(tx(e.rx), tz(e.rz), 5, 0, Math.PI * 2); mctx.fill(); mctx.stroke();
   }
-  if (G.me && G.me.alive && G.me.ph !== PH.PLANE) {
+  if (G.me && G.me.alive) {
     const x = tx(G.me.x), y = tz(G.me.z), a = -camYaw;
     mctx.save(); mctx.translate(x, y); mctx.rotate(a);
     mctx.fillStyle = '#F5B50A'; mctx.strokeStyle = '#0E0E10'; mctx.lineWidth = 2;
@@ -1152,7 +1188,7 @@ function endPtr(e) {
 }
 canvas.addEventListener('pointerup', endPtr); canvas.addEventListener('pointercancel', endPtr);
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
-for (const id of ['fireBtn', 'fireBtn2']) {
+for (const id of ['fireBtn']) {
   const el = $(id);
   el.addEventListener('pointerdown', (e) => { e.preventDefault(); audioInit(); btn.fire = true; el.classList.add('on'); try { el.setPointerCapture(e.pointerId); } catch (_) {} sticks.fire = { id: e.pointerId, x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY }; });
   el.addEventListener('pointermove', (e) => { const s = sticks.fire; if (s && s.id === e.pointerId) { s.x = e.clientX; s.y = e.clientY; lookDelta(s); } });
@@ -1165,9 +1201,10 @@ for (const id of ['fireBtn', 'fireBtn2']) {
   const off = () => { btn.jump = false; el.classList.remove('on'); };
   el.addEventListener('pointerup', off); el.addEventListener('pointercancel', off); el.addEventListener('pointerleave', off);
 }
-$('swapBtn').addEventListener('click', () => G.me && setSlot(1 - G.me.cur));
-$('slot0').addEventListener('click', () => setSlot(0));
-$('slot1').addEventListener('click', () => setSlot(1));
+// Tocar el arma en la mano recarga; tocar la otra la cambia
+for (const i of [0, 1]) $('slot' + i).addEventListener('click', () => { const me = G.me; if (!me) return; if (me.cur === i) reload(); else setSlot(i); });
+$('sprintBtn').addEventListener('click', () => { G.sprintOn = !G.sprintOn; vibrate(8); });
+$('dropBtn').addEventListener('click', () => { G.wantDrop = true; });
 $('medBtn').addEventListener('click', () => useItem('med'));
 $('shieldBtn').addEventListener('click', () => useItem('shield'));
 $('pickBtn').addEventListener('click', tryPick);
@@ -1179,7 +1216,7 @@ $('carBtn').addEventListener('click', () => {
 $('mapBtn').addEventListener('click', () => setMapBig(!G.mapBig));
 const aimingNow = () => G.ads;
 $('aimBtn').addEventListener('click', () => setAds(!G.ads));
-$('reloadBtn').addEventListener('click', reload);
+
 
 function setSlot(i) {
   const me = G.me; if (!me || me.slots[i] < 0) return;
@@ -1218,9 +1255,9 @@ function readInput() {
   const m = sticks.move;
   if (m) { const R = 60; mx = clamp((m.x - m.ox) / R, -1, 1); mz = clamp(-(m.y - m.oy) / R, -1, 1); if (Math.hypot(mx, mz) < 0.15) mx = mz = 0; }
   input.mx = mx; input.mz = mz;
-  input.sprint = !G.ads && !input.fire && (keys.ShiftLeft || keys.ShiftRight || (m && mz > 0.92));
+  input.sprint = !G.ads && !input.fire && (keys.ShiftLeft || keys.ShiftRight || G.sprintOn || (m && mz > 0.95));
   input.jump = !!(keys.Space || btn.jump);
-  input.chute = input.jump || !!keys.KeyF || G.wantChute;
+  input.chute = !!keys.KeyF || (G.me && G.me.ph === PH.PLANE && input.jump);
   input.fire = btn.fire || mouseDown;
   input.sprint = input.sprint && !input.fire;
 }
@@ -1232,7 +1269,24 @@ function stateMsg() {
   if (G.myCar) m.v = [r(G.myCar.x), r(G.myCar.z), r(G.myCar.yaw), r(G.myCar.speed)];
   return m;
 }
+// Onda expansiva al aterrizar (estilo superhéroe)
+const rings = [];
+const ringGeo = new THREE.RingGeometry(0.8, 1, 40).rotateX(-Math.PI / 2);
+function shockwave(x, y, z, big) {
+  const m = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: '#F5B50A', transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }));
+  m.position.set(x, y + 0.15, z); scene.add(m);
+  rings.push({ m, t: 0, max: big ? 9 : 6 });
+}
+function updateRings(dt) {
+  for (let i = rings.length - 1; i >= 0; i--) {
+    const r = rings[i]; r.t += dt;
+    const k = r.t / 0.6; r.m.scale.setScalar(0.5 + k * r.max); r.m.material.opacity = Math.max(0, 0.9 * (1 - k));
+    if (k >= 1) { scene.remove(r.m); r.m.material.dispose(); rings.splice(i, 1); }
+  }
+}
 function localFx(name, f) {
+  if (name === 'drop') { sfx('wind', 1); vibrate(25); toast('¡Cayendo! Empuja adelante para bajar más rápido'); }
+  if (name === 'slam') { shockwave(f.x, f.y, f.z, true); G.shake = 1; sfx('slam', 1); vibrate([60, 30, 120]); const av = G.avatars.get(G.myId); if (av) av.landT = 0.6; }
   if (name === 'jump') sfx('jump', 0.6);
   else if (name === 'land') { sfx('land', 0.8); vibrate(20); }
   else if (name === 'chute') { sfx('chute', 1); vibrate(30); }
@@ -1241,7 +1295,8 @@ function updateMe(dt) {
   const me = G.me; if (!me || !me.alive || !world) return;
   readInput();
   me.yaw = camYaw; me.pitch = camPitch;
-  if (me.ph === PH.PLANE) return; // esperando la posición de aparición
+  if (!me.spawned) return; // esperando la posición de aparición
+  if (G.wantDrop) { input.chute = true; G.wantDrop = false; }
   updateReload();
   if (me.veh) {
     const car = G.myCar;
@@ -1369,7 +1424,7 @@ function updateCamera(dt) {
   let follow = null, yaw = camYaw, pitch = camPitch;
   if (me && me.alive) follow = me;
   else if (G.spectate) { const e = G.ents.get(G.spectate); if (e && e.alive && e.rx != null) { follow = { x: e.rx, y: e.ry, z: e.rz, ph: e.ph }; yaw = e.ryaw; pitch = -0.25; } }
-  if (!follow && G.st === 0 && G.plane && G.inMatch) follow = { ...BR.planePos(G.plane, G.planeTNow), ph: PH.PLANE };
+
   if (!follow) {
     // Vista aérea lenta (menú o sin nadie a quien seguir)
     const t = G.time * 0.05;
@@ -1379,8 +1434,8 @@ function updateCamera(dt) {
   }
   const d = BR.dirFrom(yaw, pitch);
   let dist = 4.3, up = 0.4, side = 1.05;
-  if (follow.ph === PH.PLANE) { dist = 48; up = 14; side = 0; }
-  else if (follow.ph === PH.FALL) { dist = 9; up = 2.5; side = 0; }
+  if (follow.ph === PH.PLANE) { dist = 8; up = 2.2; side = 0; }
+  else if (follow.ph === PH.FALL) { dist = 7; up = 2.4; side = 0; }
   else if (follow.ph === PH.CHUTE) { dist = 8; up = 1.2; side = 0; }
   else if (G.ads && me && me.alive) { dist = 0.05; side = 0.12; up = 0.05; }
   if (me && me.alive && me.veh && !G.ads) { dist = me.seat === 0 ? 8 : 5.5; up = me.seat === 0 ? 1.4 : 1.0; side = me.seat === 0 ? 0 : 0.6; }
@@ -1404,6 +1459,7 @@ function updateCamera(dt) {
     flashlight.target.position.set(me.x + d[0] * 10, me.y + 1.5 + d[1] * 10, me.z + d[2] * 10);
   } else flashlight.visible = false;
   muzzleLight.intensity = Math.max(0, muzzleLight.intensity - dt * 60);
+  if (G.shake > 0) { camera.position.x += (Math.random() - 0.5) * G.shake * 0.5; camera.position.y += (Math.random() - 0.5) * G.shake * 0.5; G.shake = Math.max(0, G.shake - dt * 2.2); }
   const kick = (G.kick || 0) * 0.01;
   camera.lookAt(tmpV.set(cx + d[0], cy + d[1] + kick, cz + d[2]));
   G.kick = Math.max(0, (G.kick || 0) - dt * 6);
@@ -1437,7 +1493,7 @@ function drawOverlay(dt) {
   octx.textAlign = 'center'; octx.font = '600 13px Outfit, system-ui, sans-serif';
   for (const r of G.roster.values()) {
     if (r.team !== G.myTeam || r.id === G.myId) continue;
-    const e = G.ents.get(r.id); if (!e || !e.alive || e.rx == null || e.ph === PH.PLANE) continue;
+    const e = G.ents.get(r.id); if (!e || !e.alive || e.rx == null) continue;
     const s = toScreen(e.rx, e.ry + 2.3, e.rz); if (!s) continue;
     octx.fillStyle = 'rgba(14,14,16,.55)'; const w = octx.measureText(r.name).width + 12; octx.fillRect(s.x - w / 2, s.y - 16, w, 18);
     octx.fillStyle = r.color; octx.fillText(r.name, s.x, s.y - 3);
@@ -1481,8 +1537,13 @@ function drawOverlay(dt) {
       octx.beginPath(); for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { octx.moveTo(cx + sx * 6, cy + sy * 6); octx.lineTo(cx + sx * 13, cy + sy * 13); } octx.stroke();
     }
   }
-  // Joystick
+  // Joystick (fantasma cuando no lo tocas, para que sepas dónde va)
   const m = sticks.move;
+  if (!m && G.me && G.me.alive) {
+    const gx = 110 + (VW > 700 ? 20 : 0), gy = VH - 100;
+    octx.strokeStyle = 'rgba(255,255,255,.14)'; octx.lineWidth = 2; octx.beginPath(); octx.arc(gx, gy, 52, 0, Math.PI * 2); octx.stroke();
+    octx.fillStyle = 'rgba(255,255,255,.12)'; octx.beginPath(); octx.arc(gx, gy, 20, 0, Math.PI * 2); octx.fill();
+  }
   if (m) {
     octx.strokeStyle = 'rgba(255,255,255,.25)'; octx.lineWidth = 2; octx.beginPath(); octx.arc(m.ox, m.oy, 60, 0, Math.PI * 2); octx.stroke();
     const dx = m.x - m.ox, dy = m.y - m.oy, d = Math.hypot(dx, dy), k = Math.min(d, 60) / (d || 1);
@@ -1504,7 +1565,7 @@ function frame(t) {
   }
   const sess = G.session;
   G.planeTNow = G.plane ? G.planeT + (sess && sess.kind === 'online' ? (performance.now() - G.snapAt) / 1000 : 0) : 0;
-  if (G.screen === 'match' && !G.paused) updateMe(dt);
+  if (G.screen === 'match' && !G.paused && !G.loading) updateMe(dt);
   if (sess) sess.update(dt);
   if (backdrop && !G.inMatch) { backdrop.update(dt); onSnapshotBackdrop(); }
   interpolate(performance.now() / 1000, sess && sess.kind === 'online' ? 0.12 : 0);
@@ -1536,6 +1597,7 @@ function frame(t) {
   } else if (zoneMesh) { zoneMesh.visible = false; nextZoneMesh.visible = false; }
   if (lootDirty) rebuildLoot();
   updateTracers(dt);
+  updateRings(dt);
   updateCamera(dt);
   renderer.render(scene, camera);
   drawOverlay(dt);

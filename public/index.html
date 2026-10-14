@@ -48,6 +48,8 @@
   <symbol id="i-scope" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2"/><path d="M12 1.5v5M12 17.5v5M1.5 12h5M17.5 12h5"/></symbol>
   <symbol id="i-reload" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4.5V11h-6.5"/></symbol>
   <symbol id="i-car" viewBox="0 0 24 24"><path d="M5 16V11l2-5h10l2 5v5M3.5 11h17M5 16h14"/><circle cx="7.5" cy="16.5" r="1.8"/><circle cx="16.5" cy="16.5" r="1.8"/></symbol>
+  <symbol id="i-run" viewBox="0 0 24 24"><circle cx="14" cy="4.5" r="2"/><path d="M8 21l3-6 3 2v5M6 12l3-4 4 1 3 4 3 1M11 15l1-5"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 4v15M6 13l6 6 6-6"/></symbol>
   <symbol id="i-map" viewBox="0 0 24 24"><path d="M9 4L3.5 6v14L9 18l6 2 5.5-2V4L15 6zM9 4v14M15 6v14"/></symbol>
   <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></symbol>
   <symbol id="i-crown" viewBox="0 0 24 24"><path d="M4 18h16M5 15l-1-9 5 4 3-5 3 5 5-4-1 9z"/></symbol>
@@ -56,54 +58,61 @@
 <canvas id="game" aria-label="Isla de Meiker Battle Royale"></canvas>
 <canvas id="overlay" aria-hidden="true"></canvas>
 
-<!-- HUD -->
+<!-- HUD: lo mínimo para jugar -->
 <div id="hud" class="hidden">
-  <div class="hud-top">
-    <div class="hud-chips">
-      <span class="glass chip"><svg class="ic"><use href="#i-users"/></svg><b class="rx-num" id="hudAlive">20</b><small>vivos</small></span>
-      <span class="glass chip"><svg class="ic"><use href="#i-target"/></svg><b class="rx-num" id="hudKills">0</b><small>bajas</small></span>
-      <span class="glass chip" id="pingChip" hidden>-- ms</span>
-      <span class="glass chip" id="speedChip" hidden>0 km/h</span>
+  <div class="hud-tl">
+    <div class="pill glass">
+      <span><svg class="ic"><use href="#i-users"/></svg><b class="rx-num" id="hudAlive">20</b></span>
+      <span><svg class="ic"><use href="#i-target"/></svg><b class="rx-num" id="hudKills">0</b></span>
+      <span id="speedChip" hidden>0 km/h</span>
+      <span id="pingChip" class="bad" hidden>Señal débil</span>
     </div>
-    <div class="glass hud-zone" id="hudZone">Preparando la isla</div>
-    <div class="hud-right">
-      <button class="glass icon-btn" id="pauseBtn" aria-label="Pausa"><svg class="ic"><use href="#i-pause"/></svg></button>
-      <button class="minimap-wrap" id="mapBtn" aria-label="Ver mapa"><canvas id="minimap" width="300" height="300"></canvas></button>
-    </div>
+    <div id="teamBox"></div>
+  </div>
+  <div class="hud-zone" id="hudZone"></div>
+  <div class="hud-tr">
+    <button class="icon-btn mini glass" id="pauseBtn" aria-label="Pausa"><svg class="ic"><use href="#i-pause"/></svg></button>
+    <button class="minimap-wrap" id="mapBtn" aria-label="Ver mapa"><canvas id="minimap" width="300" height="300"></canvas></button>
   </div>
   <div id="feed"></div>
   <div id="toasts"></div>
-  <div id="teamBox"></div>
   <div class="hud-bottom">
     <div class="bars">
       <div class="bar bar-sh"><i id="shBar"></i></div>
-      <div class="bar bar-hp"><i id="hpBar"></i><span class="rx-num" id="hpText">100</span></div>
+      <div class="bar bar-hp"><i id="hpBar"></i></div>
     </div>
     <div class="slots">
-      <button class="glass slot" id="slot0" data-slot="0"><span class="slot-name">Vacío</span><b class="rx-num">--</b></button>
-      <button class="glass slot" id="slot1" data-slot="1"><span class="slot-name">Vacío</span><b class="rx-num">--</b></button>
-    </div>
-    <div class="items">
-      <button class="glass item-btn" id="medBtn" aria-label="Usar botiquín"><svg class="ic"><use href="#i-plus"/></svg><b class="rx-num" id="medN">0</b></button>
-      <button class="glass item-btn" id="shieldBtn" aria-label="Usar escudo"><svg class="ic"><use href="#i-shield"/></svg><b class="rx-num" id="shieldN">0</b></button>
+      <button class="item-btn" id="medBtn" aria-label="Usar botiquín"><svg class="ic"><use href="#i-plus"/></svg><b class="rx-num" id="medN">0</b></button>
+      <button class="slot" id="slot0" data-slot="0"><span class="slot-name">Vacío</span><b class="rx-num">--</b></button>
+      <button class="slot" id="slot1" data-slot="1"><span class="slot-name">Vacío</span><b class="rx-num">--</b></button>
+      <button class="item-btn" id="shieldBtn" aria-label="Usar escudo"><svg class="ic"><use href="#i-shield"/></svg><b class="rx-num" id="shieldN">0</b></button>
     </div>
   </div>
-  <button class="btn-glass hud-action car-action" id="carBtn" hidden><svg class="ic"><use href="#i-car"/></svg><span id="carText">Manejar</span></button>
-  <button class="btn-primary hud-action" id="pickBtn" hidden><svg class="ic"><use href="#i-hand"/></svg><span id="pickText">Recoger</span></button>
+  <button class="ctx-btn" id="carBtn" hidden><svg class="ic"><use href="#i-car"/></svg><span id="carText">Manejar</span></button>
+  <button class="ctx-btn" id="pickBtn" hidden><svg class="ic"><use href="#i-hand"/></svg><span id="pickText">Recoger</span></button>
+  <button class="btn-primary drop-btn" id="dropBtn" hidden><svg class="ic"><use href="#i-down"/></svg><span>Caer aquí</span><small id="flyLeft">20</small></button>
   <div id="spectate" class="glass hidden">
     <div><b id="specTitle">Te bajaron</b><p class="muted" id="specSub"></p></div>
     <button class="btn-glass" id="specLeave">Salir</button>
   </div>
 </div>
 
-<!-- Controles táctiles -->
+<!-- Controles táctiles: joystick a la izquierda, botones en arco a la derecha -->
 <div id="touch" class="hidden">
   <button class="tbtn tbtn-fire" id="fireBtn" aria-label="Disparar"><svg class="ic"><use href="#i-fire"/></svg></button>
-  <button class="tbtn tbtn-fire2" id="fireBtn2" aria-label="Disparar"><svg class="ic"><use href="#i-fire"/></svg></button>
+  <button class="tbtn tbtn-aim" id="aimBtn" aria-label="Mira"><svg class="ic"><use href="#i-scope"/></svg></button>
   <button class="tbtn tbtn-jump" id="jumpBtn" aria-label="Saltar"><svg class="ic"><use href="#i-up"/></svg></button>
-  <button class="tbtn tbtn-swap" id="swapBtn" aria-label="Cambiar arma"><svg class="ic"><use href="#i-swap"/></svg></button>
-  <button class="tbtn tbtn-aim" id="aimBtn" aria-label="Mira"><svg class="ic"><use href="#i-scope"/></svg><small>Mira</small></button>
-  <button class="tbtn tbtn-reload" id="reloadBtn" aria-label="Recargar"><svg class="ic"><use href="#i-reload"/></svg></button>
+  <button class="tbtn tbtn-run" id="sprintBtn" aria-label="Correr"><svg class="ic"><use href="#i-run"/></svg></button>
+</div>
+
+<!-- Pantalla de carga -->
+<div id="loadScreen" class="hidden">
+  <div class="ls-card">
+    <div class="ls-kicker">Riverojsx presenta</div>
+    <h1>Meikerjsx<br><span>Battle Royale</span></h1>
+    <div class="ls-bar"><i id="lsFill"></i></div>
+    <p id="lsTip">Preparando la isla…</p>
+  </div>
 </div>
 
 <!-- Menú principal -->
@@ -215,6 +224,7 @@
     </div>
     <div class="how-grid">
       <div><h3>La partida</h3><ul>
+        <li>Empiezas volando sobre la isla unos segundos: muévete y toca <b>Caer aquí</b> donde quieras aterrizar. Caes lento y aterrizas de golpe.</li>
         <li>Apareces con pistola y 3 segundos de protección. Busca armas en Meiker City, Meketown, los pueblos y los campamentos.</li>
         <li>Hay jeeps (4 puestos) y buggys (2 puestos) en las carreteras. Toca <b>Manejar</b> cerca de uno; tu compañero puede ir de pasajero y disparar. Atropellar también hace daño.</li>
         <li>Fuera de la zona pierdes vida cada segundo. Mira el mapa: el círculo amarillo es la próxima zona.</li>
@@ -223,7 +233,7 @@
         <li>Pulgar izquierdo: moverte. Lado derecho: arrastra para mirar.</li>
         <li>Mantén el botón de disparo; puedes arrastrarlo para apuntar mientras disparas.</li>
         <li>Botón <b>Mira</b>: acerca la cámara y dispara más preciso. Con el francotirador ves por la mira telescópica.</li>
-        <li>Empuja el joystick hasta arriba para correr. El botón circular recarga.</li></ul></div>
+        <li>Botón de correr: actívalo y corres mientras te mueves. Toca el arma que tienes en la mano para recargar y la otra para cambiar.</li></ul></div>
       <div><h3>Consejos</h3><ul>
         <li>Juega con el celular acostado y la app instalada: se ve en pantalla completa y la pantalla no se apaga.</li>
         <li>Si se cae el internet, el juego se reconecta solo y tu jugador te espera unos segundos.</li>

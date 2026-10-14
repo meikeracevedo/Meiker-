@@ -50,7 +50,7 @@
     { key: 'rifle', name: 'Rifle de asalto', dmg: 21, rate: 0.12, spread: 0.026, pellets: 1, range: 200, ammo: 180, mag: 30, reload: 2, head: 1.7 },
     { key: 'sniper', name: 'Francotirador', dmg: 95, rate: 1.4, spread: 0.02, pellets: 1, range: 400, ammo: 20, mag: 5, reload: 2.6, head: 2, adsSpread: 0.0012 },
   ];
-  const ADS_SPREAD = 0.45, SPAWN_PROT = 3;
+  const ADS_SPREAD = 0.45, SPAWN_PROT = 3, LAND_PROT = 2.5, FLY_TIME = 18;
   const RANK = [1, 2, 3, 5, 4]; // qué tan buena es cada arma (para bots)
   const LOOT = { MED: 10, SHIELD: 11, AMMO: 12 };
   const LOOT_NAMES = { 10: 'Botiquín', 11: 'Escudo', 12: 'Munición' };
@@ -425,12 +425,18 @@
     const jumpEdge = inp.jump && !f.jumpHeld; f.jumpHeld = !!inp.jump;
     const chuteEdge = inp.chute && !f.chuteHeld; f.chuteHeld = !!inp.chute;
     const approach = (v, t, a) => (v < t ? Math.min(v + a, t) : Math.max(v - a, t));
-    if (f.ph === PH.PLANE) return;
     const ground = world.heightAt(f.x, f.z);
-    if (f.ph === PH.FALL) {
-      f.vx = approach(f.vx, wx * 24, 40 * dt); f.vz = approach(f.vz, wz * 24, 40 * dt);
-      f.vy = approach(f.vy, mz > 0.3 ? -58 : -42, 60 * dt);
-      if (f.y - ground < 110 || (chuteEdge && f.y - ground < 230)) { f.ph = PH.CHUTE; fx && fx('chute', f); }
+    if (f.ph === PH.PLANE) {
+      // Volando al inicio: se mueve libre sobre la isla hasta que decide caer (o se acaba el tiempo)
+      f.flyT = Math.max(0, (f.flyT == null ? FLY_TIME : f.flyT) - dt);
+      f.vx = approach(f.vx, wx * 17, 30 * dt); f.vz = approach(f.vz, wz * 17, 30 * dt);
+      const hover = Math.max(ground + 45, f.flyY || f.y);
+      f.vy = (hover - f.y) * 2;
+      if (chuteEdge || f.flyT <= 0) { f.ph = PH.FALL; f.vy = -2; fx && fx('drop', f); }
+    } else if (f.ph === PH.FALL) {
+      // Caída lenta y controlada; empujando hacia adelante cae más rápido
+      f.vx = approach(f.vx, wx * 10, 18 * dt); f.vz = approach(f.vz, wz * 10, 18 * dt);
+      f.vy = approach(f.vy, mz > 0.3 ? -17 : -9, 20 * dt);
     } else if (f.ph === PH.CHUTE) {
       f.vx = approach(f.vx, wx * 12, 20 * dt); f.vz = approach(f.vz, wz * 12, 20 * dt);
       f.vy = approach(f.vy, mz > 0.3 ? -14 : -10, 40 * dt);
@@ -452,9 +458,10 @@
       if (f.grounded) f.run += Math.hypot(f.vx, f.vz) * dt;
     } else if (f.y <= g + 0.05) {
       if (g < 0.6) { const l = world.toLand(f.x, f.z); f.x = l.x; f.z = l.z; }
-      f.y = world.heightAt(f.x, f.z); f.vy = 0; f.vx = 0; f.vz = 0; f.ph = PH.GROUND; f.grounded = true; fx && fx('land', f);
+      f.y = world.heightAt(f.x, f.z); f.vy = 0; f.vx = 0; f.vz = 0; f.ph = PH.GROUND; f.grounded = true; f.prot = Math.max(f.prot || 0, LAND_PROT);
+      fx && fx('slam', f);
     }
-    if (f.ph !== PH.FALL) world.collide(f);
+    if (f.ph === PH.GROUND || f.ph === PH.CHUTE) world.collide(f);
   }
 
   /* ---------- Partida ---------- */
@@ -520,7 +527,8 @@
       list.forEach((f, i) => {
         let x = best.x + (i ? 2.5 : 0), z = best.z + (i ? 1.5 : 0);
         if (W.blocked(x, z) || W.heightAt(x, z) < 0.6) { x = best.x; z = best.z; }
-        Object.assign(f, { x, z, y: W.heightAt(x, z), ph: PH.GROUND, grounded: true, prot: SPAWN_PROT, yaw: Math.atan2(-(SIZE / 2 - x), -(SIZE / 2 - z)) });
+        const y = W.heightAt(x, z) + 60;
+        Object.assign(f, { x, z, y, flyY: y, flyT: FLY_TIME, ph: PH.PLANE, grounded: false, prot: 0, yaw: Math.atan2(-(SIZE / 2 - x), -(SIZE / 2 - z)) });
         f.slots = [0, -1]; f.mag = [WEAPONS[0].mag, 0]; f.ammo = [24, 0]; f.cur = 0; f.iv++;
       });
     }
@@ -575,7 +583,7 @@
   Match.prototype.outside = function (f) { return Math.hypot(f.x - this.zone.cx, f.z - this.zone.cz) > this.zone.r; };
 
   Match.prototype.damage = function (t, amount, by, w, head) {
-    if (!t.alive || this.state === 'end' || t.prot > 0) return;
+    if (!t.alive || this.state === 'end' || t.prot > 0 || (t.ph !== PH.GROUND && by)) return;
     amount = Math.round(amount);
     const s = Math.min(t.sh, amount);
     t.sh -= s; t.hp -= amount - s;
@@ -782,8 +790,8 @@
     const ph = clamp(Math.round(num(m.ph, f.ph)), 0, 3);
     if (ph < f.ph) return;
     f.ph = ph;
-    if (ph === PH.PLANE) return;
-    f.x = clamp(num(m.x, f.x), 0, SIZE); f.z = clamp(num(m.z, f.z), 0, SIZE); f.y = clamp(num(m.y, f.y), -20, PLANE_Y + 10);
+    if (f.ph !== PH.GROUND && ph === PH.GROUND) f.prot = LAND_PROT;
+    f.x = clamp(num(m.x, f.x), 0, SIZE); f.z = clamp(num(m.z, f.z), 0, SIZE); f.y = clamp(num(m.y, f.y), -20, 160);
     f.vx = num(m.vx, 0); f.vy = num(m.vy, 0); f.vz = num(m.vz, 0);
     f.yaw = num(m.yw, f.yaw); f.pitch = clamp(num(m.pt, f.pitch), -1.5, 1.5);
     f.grounded = !!m.g;
@@ -807,7 +815,20 @@
     const ai = b.ai || (b.ai = {});
     if (ai.lx == null) Object.assign(ai, { t: 0, target: null, goal: null, strafe: 1, strafeT: 0, seen: 0, stuckT: 0, lx: b.x, lz: b.z, avoid: 0, avoidT: 0, errT: 0, ex: 0, ey: 0, wander: null });
     const inp = { mx: 0, mz: 0, jump: false, chute: false, sprint: false };
-    if (b.ph !== PH.GROUND) { stepFighter(b, inp, dt, W); return; }
+    if (b.ph !== PH.GROUND) {
+      // Bots volando: escogen una zona, vuelan hasta allá y caen
+      if (!ai.land) {
+        const zones = W.towns.concat(W.camps), t = zones[Math.floor(Math.random() * zones.length)];
+        ai.land = Math.random() < 0.8 && t ? { x: t.x + (Math.random() - 0.5) * 20, z: t.z + (Math.random() - 0.5) * 20 } : { x: b.x + (Math.random() - 0.5) * 80, z: b.z + (Math.random() - 0.5) * 80 };
+        ai.dropAt = 2 + Math.random() * 12;
+      }
+      const dx = ai.land.x - b.x, dz = ai.land.z - b.z, d = Math.hypot(dx, dz);
+      b.yaw = Math.atan2(-dx, -dz);
+      inp.mz = d > 4 ? 1 : 0;
+      if (b.ph === PH.PLANE && (d < 25 || (b.flyT != null && FLY_TIME - b.flyT > ai.dropAt + 8))) inp.chute = true;
+      stepFighter(b, inp, dt, W);
+      return;
+    }
     if (this.state === 'end') { stepFighter(b, inp, dt, W); return; }
     ai.t -= dt; ai.strafeT -= dt; ai.avoidT -= dt; ai.errT -= dt;
     const eyeY = b.y + EYE;
@@ -952,6 +973,6 @@
 
   return {
     SIZE, EYE, RAD, HEIGHT, MAX_PLAYERS, PLANE_Y, PH, WEAPONS, LOOT, LOOT_NAMES, DIFF, ZONE, TEAM_COLORS,
-    VEHICLES, SEATS, seatPos, stepVehicle, ADS_SPREAD, SPAWN_PROT, rng, clamp, World, Match, makeFighter, stepFighter, planePos, dirFrom, spreadDirs, rayFighters, cleanName,
+    FLY_TIME, VEHICLES, SEATS, seatPos, stepVehicle, ADS_SPREAD, SPAWN_PROT, rng, clamp, World, Match, makeFighter, stepFighter, planePos, dirFrom, spreadDirs, rayFighters, cleanName,
   };
 });
