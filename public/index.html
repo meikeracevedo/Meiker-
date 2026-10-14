@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#0E0E10">
-<meta name="description" content="Battle royale 3D para el celular: salta del avión, recoge armas y sé el último en pie. Solo o en dúo con tus amigos.">
+<meta name="description" content="Battle royale 3D de stickmen de noche: apareces en la isla, recoges armas y eres el último en pie. Solo o en dúo con tus amigos.">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -45,6 +45,8 @@
   <symbol id="i-plane" viewBox="0 0 24 24"><path d="M10.5 20l1.5-4 1.5 4M12 16V4.5a1.5 1.5 0 0 0-3 0M12 4.5a1.5 1.5 0 0 1 3 0M3 12l9-3 9 3M8 19.5h8"/></symbol>
   <symbol id="i-chute" viewBox="0 0 24 24"><path d="M3 11a9 7 0 0 1 18 0zM3 11l9 9 9-9M8 11l4 9 4-9"/></symbol>
   <symbol id="i-fire" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></symbol>
+  <symbol id="i-scope" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2"/><path d="M12 1.5v5M12 17.5v5M1.5 12h5M17.5 12h5"/></symbol>
+  <symbol id="i-reload" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4.5V11h-6.5"/></symbol>
   <symbol id="i-map" viewBox="0 0 24 24"><path d="M9 4L3.5 6v14L9 18l6 2 5.5-2V4L15 6zM9 4v14M15 6v14"/></symbol>
   <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></symbol>
   <symbol id="i-crown" viewBox="0 0 24 24"><path d="M4 18h16M5 15l-1-9 5 4 3-5 3 5 5-4-1 9z"/></symbol>
@@ -61,7 +63,7 @@
       <span class="glass chip"><svg class="ic"><use href="#i-target"/></svg><b class="rx-num" id="hudKills">0</b><small>bajas</small></span>
       <span class="glass chip" id="pingChip" hidden>-- ms</span>
     </div>
-    <div class="glass hud-zone" id="hudZone">Subiendo al avión</div>
+    <div class="glass hud-zone" id="hudZone">Preparando la isla</div>
     <div class="hud-right">
       <button class="glass icon-btn" id="pauseBtn" aria-label="Pausa"><svg class="ic"><use href="#i-pause"/></svg></button>
       <button class="minimap-wrap" id="mapBtn" aria-label="Ver mapa"><canvas id="minimap" width="300" height="300"></canvas></button>
@@ -85,8 +87,6 @@
     </div>
   </div>
   <button class="btn-primary hud-action" id="pickBtn" hidden><svg class="ic"><use href="#i-hand"/></svg><span id="pickText">Recoger</span></button>
-  <button class="btn-primary hud-action" id="dropBtn" hidden><svg class="ic"><use href="#i-plane"/></svg><span>Saltar del avión</span></button>
-  <button class="btn-glass hud-action" id="chuteBtn" hidden><svg class="ic"><use href="#i-chute"/></svg><span>Abrir paracaídas</span></button>
   <div id="spectate" class="glass hidden">
     <div><b id="specTitle">Te bajaron</b><p class="muted" id="specSub"></p></div>
     <button class="btn-glass" id="specLeave">Salir</button>
@@ -100,6 +100,8 @@
   <button class="tbtn tbtn-fire2" id="fireBtn2" aria-label="Disparar"><svg class="ic"><use href="#i-fire"/></svg></button>
   <button class="tbtn tbtn-jump" id="jumpBtn" aria-label="Saltar"><svg class="ic"><use href="#i-up"/></svg></button>
   <button class="tbtn tbtn-swap" id="swapBtn" aria-label="Cambiar arma"><svg class="ic"><use href="#i-swap"/></svg></button>
+  <button class="tbtn tbtn-aim" id="aimBtn" aria-label="Mira"><svg class="ic"><use href="#i-scope"/></svg><small>Mira</small></button>
+  <button class="tbtn tbtn-reload" id="reloadBtn" aria-label="Recargar"><svg class="ic"><use href="#i-reload"/></svg></button>
 </div>
 
 <!-- Menú principal -->
@@ -107,9 +109,9 @@
   <div class="menu-grid">
     <section class="hero">
       <div class="hero-main">
-        <div class="hero-kicker">Battle royale 3D · 20 jugadores</div>
+        <div class="hero-kicker">Battle royale 3D · stickmen · de noche</div>
         <h1>Meiker<br>Battle Royale</h1>
-        <p>Salta del avión, cae donde quieras, agarra armas y sé el último en pie. Solo o en dúo con tu parcero.</p>
+        <p>20 stickmen aparecen en una isla a oscuras. Agarra armas, apunta con mira y sé el último en pie. Solo o en dúo con tu parcero.</p>
       </div>
       <div class="hero-tab"><span class="brand">Riverojsx<b>.</b></span></div>
     </section>
@@ -206,22 +208,23 @@
   <div class="glass modal modal-wide">
     <div class="board-head">
       <svg class="ic ic-lg"><use href="#i-info"/></svg>
-      <div><h2>Cómo jugar</h2><p class="muted">20 jugadores caen en la isla. La zona se va cerrando: el último jugador o dúo en pie gana.</p></div>
+      <div><h2>Cómo jugar</h2><p class="muted">20 jugadores aparecen en puntos al azar de la isla. La zona se va cerrando: el último jugador o dúo en pie gana.</p></div>
       <button class="icon-btn glass" id="howClose" aria-label="Cerrar"><svg class="ic"><use href="#i-x"/></svg></button>
     </div>
     <div class="how-grid">
       <div><h3>La partida</h3><ul>
-        <li>Toca <b>Saltar del avión</b> cuando pases por donde quieres caer. El paracaídas se abre solo cerca del piso.</li>
+        <li>Apareces con pistola y 3 segundos de protección. Busca armas en los pueblos y campamentos (cajas militares).</li>
         <li>Fuera de la zona pierdes vida cada segundo. Mira el mapa: el círculo amarillo es la próxima zona.</li>
         <li>Botiquín cura 50. Escudo da 50 de protección extra.</li></ul></div>
       <div><h3>En el celular</h3><ul>
         <li>Pulgar izquierdo: moverte. Lado derecho: arrastra para mirar.</li>
         <li>Mantén el botón de disparo; puedes arrastrarlo para apuntar mientras disparas.</li>
-        <li>Botón Recoger aparece cuando estás encima de algo.</li></ul></div>
+        <li>Botón <b>Mira</b>: acerca la cámara y dispara más preciso. Con el francotirador ves por la mira telescópica.</li>
+        <li>Empuja el joystick hasta arriba para correr. El botón circular recarga.</li></ul></div>
       <div><h3>En el computador</h3><ul>
-        <li>WASD para moverte, mouse para mirar, clic para disparar.</li>
-        <li>Espacio salta (y salta del avión), E recoge, 1 y 2 cambian de arma.</li>
-        <li>Q usa botiquín, R usa escudo, M abre el mapa, Esc pausa.</li></ul></div>
+        <li>WASD para moverte, Shift corre, mouse para mirar, clic dispara, clic derecho apunta con mira.</li>
+        <li>R recarga, Espacio salta, E recoge, 1 y 2 cambian de arma.</li>
+        <li>Q usa botiquín, X usa escudo, M abre el mapa, Esc pausa.</li></ul></div>
       <div><h3>En dúo</h3><ul>
         <li>Uno crea la sala y comparte el código. Los dos primeros quedan en el mismo equipo.</li>
         <li>Tu compañero sale en el mapa y con su nombre encima.</li>

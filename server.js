@@ -89,6 +89,7 @@ wss.on("connection", (ws) => {
       case "pick": if (match) match.onPick(ws.pid, m); break;
       case "use": if (match) match.onUse(ws.pid, m); break;
       case "slot": if (match) match.onSlot(ws.pid, m); break;
+      case "reload": if (match) match.onReload(ws.pid); break;
       case "ping": send(ws, { t: "pong", c: m.c }); break;
       case "create": {
         if (room) return;

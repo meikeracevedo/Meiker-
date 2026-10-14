@@ -7,7 +7,7 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  const SIZE = 1200, EYE = 1.6, RAD = 0.45, HEIGHT = 1.8, MAX_PLAYERS = 20;
+  const SIZE = 600, EYE = 1.6, RAD = 0.45, HEIGHT = 1.8, MAX_PLAYERS = 20;
   const PLANE_Y = 280, PLANE_SPEED = 55;
   const PH = { PLANE: 0, FALL: 1, CHUTE: 2, GROUND: 3 };
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -42,43 +42,46 @@
     return v / 0.9375;
   }
 
+  // mag: balas por cargador; ammo: munición total con la que viene el arma; reload: segundos
   const WEAPONS = [
-    { key: 'pistol', name: 'Pistola', dmg: 20, rate: 0.32, spread: 0.018, pellets: 1, range: 120, ammo: 60, head: 1.8 },
-    { key: 'smg', name: 'Subfusil', dmg: 13, rate: 0.085, spread: 0.045, pellets: 1, range: 80, ammo: 150, head: 1.5 },
-    { key: 'shotgun', name: 'Escopeta', dmg: 12, rate: 0.95, spread: 0.11, pellets: 8, range: 35, ammo: 30, head: 1.25 },
-    { key: 'rifle', name: 'Rifle de asalto', dmg: 21, rate: 0.12, spread: 0.022, pellets: 1, range: 220, ammo: 180, head: 1.7 },
-    { key: 'sniper', name: 'Francotirador', dmg: 95, rate: 1.5, spread: 0.0015, pellets: 1, range: 600, ammo: 20, head: 2 },
+    { key: 'pistol', name: 'Pistola', dmg: 20, rate: 0.3, spread: 0.02, pellets: 1, range: 110, ammo: 48, mag: 12, reload: 1.1, head: 1.8 },
+    { key: 'smg', name: 'Subfusil', dmg: 13, rate: 0.085, spread: 0.05, pellets: 1, range: 75, ammo: 150, mag: 30, reload: 1.6, head: 1.5 },
+    { key: 'shotgun', name: 'Escopeta', dmg: 12, rate: 0.9, spread: 0.11, pellets: 8, range: 32, ammo: 30, mag: 5, reload: 2.2, head: 1.25 },
+    { key: 'rifle', name: 'Rifle de asalto', dmg: 21, rate: 0.12, spread: 0.026, pellets: 1, range: 200, ammo: 180, mag: 30, reload: 2, head: 1.7 },
+    { key: 'sniper', name: 'Francotirador', dmg: 95, rate: 1.4, spread: 0.02, pellets: 1, range: 400, ammo: 20, mag: 5, reload: 2.6, head: 2, adsSpread: 0.0012 },
   ];
+  const ADS_SPREAD = 0.45, SPAWN_PROT = 3;
   const RANK = [1, 2, 3, 5, 4]; // qué tan buena es cada arma (para bots)
   const LOOT = { MED: 10, SHIELD: 11, AMMO: 12 };
   const LOOT_NAMES = { 10: 'Botiquín', 11: 'Escudo', 12: 'Munición' };
   const DIFF = [
-    { name: 'Fácil', err: 0.09, react: 0.8, rate: 1.7, range: 70 },
-    { name: 'Normal', err: 0.05, react: 0.5, rate: 1.3, range: 110 },
-    { name: 'Pro', err: 0.022, react: 0.28, rate: 1.05, range: 160 },
+    { name: 'Fácil', err: 0.1, react: 0.9, rate: 1.8, range: 50 },
+    { name: 'Normal', err: 0.055, react: 0.55, rate: 1.35, range: 80 },
+    { name: 'Pro', err: 0.025, react: 0.3, rate: 1.05, range: 120 },
   ];
   const ZONE = [
-    { wait: 95, shrink: 40, r: 520, dps: 1 },
-    { wait: 50, shrink: 35, r: 320, dps: 2 },
-    { wait: 45, shrink: 30, r: 180, dps: 4 },
-    { wait: 40, shrink: 25, r: 90, dps: 6 },
-    { wait: 30, shrink: 25, r: 35, dps: 9 },
-    { wait: 25, shrink: 25, r: 0, dps: 14 },
+    { wait: 55, shrink: 30, r: 250, dps: 2 },
+    { wait: 35, shrink: 25, r: 150, dps: 3 },
+    { wait: 30, shrink: 22, r: 85, dps: 5 },
+    { wait: 25, shrink: 20, r: 42, dps: 7 },
+    { wait: 20, shrink: 18, r: 16, dps: 10 },
+    { wait: 15, shrink: 15, r: 0, dps: 15 },
   ];
   const TEAM_COLORS = ['#F5B50A', '#4FD1FF', '#FF6FAE', '#3DDC84', '#FF8A3D', '#B18CFF', '#F5F5F4', '#7CF2E0', '#FF5A5F', '#C9E265'];
   const BOT_NAMES = ['Pecoso', 'Mono', 'Flaco', 'Toño', 'Chepe', 'Nacho', 'Rolo', 'Paisa', 'Mancha', 'Gato', 'Pibe', 'Chucho', 'Lalo', 'Kike', 'Pelusa', 'Tato', 'Caliche', 'Juancho', 'Mafe', 'Lucho', 'Coco', 'Beto'];
-  const TOWN_NAMES = ['Puerto Arepa', 'La Loma', 'Villa Mango', 'El Ventarrón', 'Pico Neblina', 'Playa Brava', 'Los Cauchos', 'San Tintico', 'Bahía Panela'];
+  const TOWN_NAMES = ['Puerto Arepa', 'La Loma', 'Villa Mango', 'El Ventarrón', 'Pico Neblina', 'Playa Brava', 'Los Cauchos', 'San Tintico', 'Bahía Panela', 'El Guadual', 'Mirador Luna'];
+  const CAMP_NAMES = ['Bodega Norte', 'Campamento', 'Base Militar', 'El Depósito', 'Torre Radio', 'Contenedores'];
 
   /* ---------- Isla aleatoria ---------- */
   function World(seed) {
     this.seed = seed >>> 0;
     const r = rng(seed);
     this.towns = [];
-    for (let tries = 0; this.towns.length < 6 && tries < 400; tries++) {
-      const x = SIZE / 2 + (r() - 0.5) * SIZE * 0.68, z = SIZE / 2 + (r() - 0.5) * SIZE * 0.68;
+    for (let tries = 0; this.towns.length < 7 && tries < 600; tries++) {
+      const x = SIZE / 2 + (r() - 0.5) * SIZE * 0.66, z = SIZE / 2 + (r() - 0.5) * SIZE * 0.66;
       const h = this.rawHeight(x, z);
-      if (h < 4 || this.towns.some(t => Math.hypot(t.x - x, t.z - z) < 230)) continue;
-      this.towns.push({ x, z, r: 45 + r() * 30, base: h, name: TOWN_NAMES[(this.towns.length + Math.floor(r() * 3)) % TOWN_NAMES.length] });
+      if (h < 3 || this.towns.some(t => Math.hypot(t.x - x, t.z - z) < 125)) continue;
+      this.towns.push({ x, z, r: 26 + r() * 16, base: h, name: TOWN_NAMES[(this.towns.length + Math.floor(r() * 3)) % TOWN_NAMES.length] });
     }
     const used = new Set();
     this.towns.forEach(t => { while (used.has(t.name)) t.name = TOWN_NAMES[(TOWN_NAMES.indexOf(t.name) + 1) % TOWN_NAMES.length]; used.add(t.name); });
@@ -86,15 +89,15 @@
     this.boxes = []; this.buildings = []; this.trees = []; this.rocks = [];
     const lootSpots = [];
     for (const t of this.towns) {
-      const n = 5 + Math.floor(r() * 5);
+      const n = 4 + Math.floor(r() * 4);
       for (let i = 0, tries = 0; i < n && tries < 80; tries++) {
         const a = r() * Math.PI * 2, d = r() * t.r * 0.85;
-        const w = 8 + r() * 8, dd = 8 + r() * 7, h = 5 + Math.floor(r() * 2) * 3.5 + r() * 1.5;
+        const w = 7 + r() * 6, dd = 7 + r() * 5, h = 4.5 + Math.floor(r() * 2) * 3.5 + r() * 1.5;
         const x = t.x + Math.cos(a) * d, z = t.z + Math.sin(a) * d;
         const b = { minX: x - w / 2, maxX: x + w / 2, minZ: z - dd / 2, maxZ: z + dd / 2, minY: t.base - 1, maxY: t.base + h, type: 'b', hue: Math.floor(r() * 5) };
-        if (this.buildings.some(o => b.minX < o.maxX + 7 && b.maxX > o.minX - 7 && b.minZ < o.maxZ + 7 && b.maxZ > o.minZ - 7)) continue;
+        if (this.buildings.some(o => b.minX < o.maxX + 6 && b.maxX > o.minX - 6 && b.minZ < o.maxZ + 6 && b.maxZ > o.minZ - 6)) continue;
         this.buildings.push(b); this.boxes.push(b); i++;
-        const spots = 3 + Math.floor(r() * 3);
+        const spots = 4 + Math.floor(r() * 3);
         for (let k = 0; k < spots; k++) {
           const side = Math.floor(r() * 4), off = r();
           let lx = side < 2 ? b.minX + off * w : (side === 2 ? b.minX - 2.2 : b.maxX + 2.2);
@@ -104,29 +107,53 @@
       }
     }
     const land = (x, z) => this.rawHeight(x, z) > 2.5;
-    const inTown = (x, z, m) => this.towns.some(t => Math.hypot(t.x - x, t.z - z) < t.r + m);
-    for (let i = 0, tries = 0; i < 70 && tries < 2000; tries++) {
+    const inTown = (x, z, m) => this.towns.some(t => Math.hypot(t.x - x, t.z - z) < t.r + m) || (this.camps || []).some(c => Math.hypot(c.x - x, c.z - z) < 16 + m);
+    // Campamentos: cajas para cubrirse y mucho botín
+    this.camps = []; this.crates = []; this.lamps = [];
+    for (let tries = 0; this.camps.length < 5 && tries < 500; tries++) {
+      const x = 50 + r() * (SIZE - 100), z = 50 + r() * (SIZE - 100);
+      if (this.rawHeight(x, z) < 3 || inTown(x, z, 30)) continue;
+      const h = this.rawHeight(x, z);
+      const camp = { x, z, name: CAMP_NAMES[this.camps.length % CAMP_NAMES.length] };
+      this.camps.push(camp);
+      const n = 5 + Math.floor(r() * 4);
+      for (let k = 0; k < n; k++) {
+        const a = (k / n) * Math.PI * 2 + r() * 0.5, d = 4 + r() * 8, s = 1.2 + r() * 0.9, tall = r() < 0.3;
+        const cx = x + Math.cos(a) * d, cz = z + Math.sin(a) * d, ch = this.rawHeight(cx, cz);
+        const c = { minX: cx - s / 2 * (tall ? 2.2 : 1), maxX: cx + s / 2 * (tall ? 2.2 : 1), minZ: cz - s / 2, maxZ: cz + s / 2, minY: ch - 0.6, maxY: ch + s * (tall ? 1.6 : 1), type: 'c', s };
+        this.crates.push(c); this.boxes.push(c);
+        lootSpots.push({ x: cx + Math.cos(a) * (s + 0.8), z: cz + Math.sin(a) * (s + 0.8) });
+      }
+      lootSpots.push({ x, z }); lootSpots.push({ x: x + 2, z: z - 2 });
+      this.lamps.push({ x: x + 1.5, z: z + 1.5 });
+    }
+    for (const t of this.towns) {
+      const n = 2 + Math.floor(r() * 3);
+      for (let k = 0; k < n; k++) { const a = r() * Math.PI * 2, d = r() * t.r; this.lamps.push({ x: t.x + Math.cos(a) * d, z: t.z + Math.sin(a) * d }); }
+    }
+    this.lamps = this.lamps.filter(l => !this.boxes.some(b => l.x > b.minX - 0.5 && l.x < b.maxX + 0.5 && l.z > b.minZ - 0.5 && l.z < b.maxZ + 0.5));
+    for (let i = 0, tries = 0; i < 45 && tries < 2000; tries++) {
       const x = 40 + r() * (SIZE - 80), z = 40 + r() * (SIZE - 80);
       if (!land(x, z) || inTown(x, z, 4)) continue;
       const s = 1.4 + r() * 2.2, h = this.heightAt(x, z);
       const rock = { minX: x - s / 2, maxX: x + s / 2, minZ: z - s / 2, maxZ: z + s / 2, minY: h - 1, maxY: h + s * 0.75, type: 'r', s };
       this.rocks.push(rock); this.boxes.push(rock); i++;
     }
-    for (let i = 0, tries = 0; i < 280 && tries < 4000; tries++) {
+    for (let i = 0, tries = 0; i < 150 && tries < 4000; tries++) {
       const x = 30 + r() * (SIZE - 60), z = 30 + r() * (SIZE - 60);
-      if (!land(x, z) || inTown(x, z, 10)) continue;
-      const h = this.heightAt(x, z), s = 0.8 + r() * 0.6;
+      if (!land(x, z) || inTown(x, z, 8)) continue;
+      const h = this.heightAt(x, z), s = 0.75 + r() * 0.5;
       const tree = { minX: x - 0.35, maxX: x + 0.35, minZ: z - 0.35, maxZ: z + 0.35, minY: h - 0.5, maxY: h + 9 * s, type: 't', s, x, z };
       this.trees.push(tree); this.boxes.push(tree); i++;
     }
-    for (let i = 0, tries = 0; i < 45 && tries < 1000; tries++) {
-      const x = 40 + r() * (SIZE - 80), z = 40 + r() * (SIZE - 80);
+    for (let i = 0, tries = 0; i < 40 && tries < 1000; tries++) {
+      const x = 30 + r() * (SIZE - 60), z = 30 + r() * (SIZE - 60);
       if (!land(x, z) || this.blocked(x, z)) continue;
       lootSpots.push({ x, z }); i++;
     }
     this.lootSpots = lootSpots.filter(s => s.x > 10 && s.x < SIZE - 10 && s.z > 10 && s.z < SIZE - 10 && !this.blocked(s.x, s.z) && this.heightAt(s.x, s.z) > 0.5);
     // Rejilla para buscar obstáculos rápido
-    this.cell = 32; this.gn = Math.ceil(SIZE / this.cell); this.grid = [];
+    this.cell = 24; this.gn = Math.ceil(SIZE / this.cell); this.grid = [];
     for (let i = 0; i < this.gn * this.gn; i++) this.grid.push([]);
     this.boxes.forEach((b, i) => {
       const x0 = clamp(Math.floor(b.minX / this.cell), 0, this.gn - 1), x1 = clamp(Math.floor(b.maxX / this.cell), 0, this.gn - 1);
@@ -135,18 +162,18 @@
     });
   }
   World.prototype.rawHeight = function (x, z) {
-    const n = fbm(x / 230, z / 230, this.seed);
-    const ridge = vnoise(x / 90, z / 90, this.seed + 99);
+    const n = fbm(x / 120, z / 120, this.seed);
+    const ridge = vnoise(x / 50, z / 50, this.seed + 99);
     const dx = (x - SIZE / 2) / (SIZE / 2), dz = (z - SIZE / 2) / (SIZE / 2);
     const d = Math.sqrt(dx * dx + dz * dz);
     const mask = 1 - smooth(0.68, 0.98, d);
-    return (Math.pow(n, 1.6) * 46 + ridge * 4 + 3) * mask - (1 - mask) * 9;
+    return (Math.pow(n, 1.6) * 30 + ridge * 3 + 3) * mask - (1 - mask) * 9;
   };
   World.prototype.heightAt = function (x, z) {
     let h = this.rawHeight(x, z);
     for (const t of this.towns) {
       const d = Math.hypot(t.x - x, t.z - z);
-      if (d < t.r + 35) { const w = 1 - smooth(t.r, t.r + 35, d); h = h * (1 - w) + t.base * w; }
+      if (d < t.r + 22) { const w = 1 - smooth(t.r, t.r + 22, d); h = h * (1 - w) + t.base * w; }
     }
     return h;
   };
@@ -259,13 +286,14 @@
     const c = Math.cos(pitch);
     return [-Math.sin(yaw) * c, Math.sin(pitch), -Math.cos(yaw) * c];
   }
-  function spreadDirs(wIdx, d, seed) {
+  function spreadDirs(wIdx, d, seed, ads) {
     const w = WEAPONS[wIdx], r = rng(seed), out = [];
+    const spread = ads ? (w.adsSpread != null ? w.adsSpread : w.spread * ADS_SPREAD) : w.spread;
     // base ortonormal alrededor de d
     let ux = -d[2], uy = 0, uz = d[0]; let ul = Math.hypot(ux, uz) || 1; ux /= ul; uz /= ul;
     const vx = d[1] * uz - d[2] * uy, vy = d[2] * ux - d[0] * uz, vz = d[0] * uy - d[1] * ux;
     for (let i = 0; i < w.pellets; i++) {
-      const a = r() * Math.PI * 2, s = Math.sqrt(r()) * w.spread;
+      const a = r() * Math.PI * 2, s = Math.sqrt(r()) * spread;
       const p = Math.cos(a) * s, q = Math.sin(a) * s;
       let x = d[0] + ux * p + vx * q, y = d[1] + uy * p + vy * q, z = d[2] + uz * p + vz * q;
       const l = Math.hypot(x, y, z); out.push([x / l, y / l, z / l]);
@@ -279,7 +307,7 @@
   function makeFighter(id, name, bot, team, color) {
     return {
       id, name, bot: !!bot, team, color, x: SIZE / 2, y: PLANE_Y, z: SIZE / 2, vx: 0, vy: 0, vz: 0, yaw: 0, pitch: 0,
-      hp: 100, sh: 0, alive: true, ph: PH.PLANE, slots: [-1, -1], ammo: [0, 0], cur: 0, meds: 0, shields: 0, iv: 0,
+      hp: 100, sh: 0, alive: true, ph: PH.PLANE, slots: [-1, -1], ammo: [0, 0], mag: [0, 0], reloadEnd: 0, prot: 0, cur: 0, meds: 0, shields: 0, iv: 0,
       kills: 0, life: 1, lastShot: -9, budget: 1, budgetT: 0, jumpHeld: false, chuteHeld: false, grounded: false,
       place: 0, useT: 0, ai: null, run: 0, dmgDone: 0,
     };
@@ -303,7 +331,7 @@
       f.vx = approach(f.vx, wx * 12, 20 * dt); f.vz = approach(f.vz, wz * 12, 20 * dt);
       f.vy = approach(f.vy, mz > 0.3 ? -14 : -10, 40 * dt);
     } else {
-      const sp = 6.4, a = f.grounded ? 60 : 14;
+      const sp = inp.sprint && mz > 0.5 ? 8.8 : 6.4, a = f.grounded ? 60 : 14;
       f.vx = approach(f.vx, wx * sp, a * dt); f.vz = approach(f.vz, wz * sp, a * dt);
       if (jumpEdge && f.grounded) { f.vy = 7.2; f.grounded = false; fx && fx('jump', f); }
       f.vy -= 22 * dt;
@@ -333,12 +361,9 @@
     this.seed = (opts.seed != null ? opts.seed : Math.random() * 4294967295) >>> 0;
     this.world = new World(this.seed);
     this.fighters = new Map(); this.items = new Map(); this.events = [];
-    this.time = 0; this.planeT = 0; this.state = 'plane'; this.nextItem = 1; this.endT = 0; this.winner = -1;
+    this.time = 0; this.planeT = 0; this.state = 'play'; this.nextItem = 1; this.endT = 0; this.winner = -1;
     const r = rng(this.seed ^ 0x9e3779b9);
-    const ang = r() * Math.PI * 2, cx = SIZE / 2 + (r() - 0.5) * 300, cz = SIZE / 2 + (r() - 0.5) * 300;
-    const dx = Math.cos(ang), dz = Math.sin(ang), L = 720;
-    this.plane = { ax: clamp(cx - dx * L, 0, SIZE), az: clamp(cz - dz * L, 0, SIZE), bx: clamp(cx + dx * L, 0, SIZE), bz: clamp(cz + dz * L, 0, SIZE) };
-    this.plane.dur = Math.hypot(this.plane.bx - this.plane.ax, this.plane.bz - this.plane.az) / PLANE_SPEED;
+    this.plane = null;
     this.zone = { cx: SIZE / 2, cz: SIZE / 2, r: SIZE * 0.75, tx: SIZE / 2, tz: SIZE / 2, tr: SIZE * 0.75, stage: -1, t: 0, shrinking: false, fromX: 0, fromZ: 0, fromR: 0, dps: 0 };
     this.nextZone();
     // Jugadores y equipos
@@ -360,11 +385,35 @@
       const f = makeFighter(botId++, n, true, t, TEAM_COLORS[t % TEAM_COLORS.length]);
       this.fighters.set(f.id, f);
     }
-    for (const f of this.fighters.values()) { const p = planePos(this.plane, 0); f.x = p.x; f.y = p.y; f.z = p.z; }
+    this.spawnAll(r);
     // Botín inicial
     for (const s of this.world.lootSpots) if (r() < 0.82) this.addItem(this.randomKind(r), s.x, s.z, true);
-    this.events.push({ t: 'start', seed: this.seed, mode: this.mode, plane: this.plane, roster: this.roster(), loot: this.lootList() });
+    this.events.push({ t: 'start', seed: this.seed, mode: this.mode, plane: null, roster: this.roster(), loot: this.lootList() });
   }
+  // Cada equipo aparece en un punto distinto de la isla, lejos de los demás
+  Match.prototype.spawnAll = function (r) {
+    const W = this.world, teams = new Map();
+    for (const f of this.fighters.values()) { if (!teams.has(f.team)) teams.set(f.team, []); teams.get(f.team).push(f); }
+    const points = [];
+    for (const [, list] of teams) {
+      let best = null, bestD = -1;
+      for (let i = 0; i < 60; i++) {
+        const x = 35 + r() * (SIZE - 70), z = 35 + r() * (SIZE - 70);
+        if (W.heightAt(x, z) < 1.2 || W.blocked(x, z)) continue;
+        let d = 999; for (const p of points) d = Math.min(d, Math.hypot(p.x - x, p.z - z));
+        if (d > bestD) { bestD = d; best = { x, z }; }
+        if (d > 70 && i > 20) break;
+      }
+      best = best || W.toLand(SIZE / 2, SIZE / 2);
+      points.push(best);
+      list.forEach((f, i) => {
+        let x = best.x + (i ? 2.5 : 0), z = best.z + (i ? 1.5 : 0);
+        if (W.blocked(x, z) || W.heightAt(x, z) < 0.6) { x = best.x; z = best.z; }
+        Object.assign(f, { x, z, y: W.heightAt(x, z), ph: PH.GROUND, grounded: true, prot: SPAWN_PROT, yaw: Math.atan2(-(SIZE / 2 - x), -(SIZE / 2 - z)) });
+        f.slots = [0, -1]; f.mag = [WEAPONS[0].mag, 0]; f.ammo = [24, 0]; f.cur = 0; f.iv++;
+      });
+    }
+  };
   function cleanName(n) { return String(n || '').replace(/[^\p{L}\p{N} _.-]/gu, '').trim().slice(0, 14) || 'Jugador'; }
   Match.prototype.roster = function () { return [...this.fighters.values()].map(f => [f.id, f.name, f.bot ? 1 : 0, f.team, f.color]); };
   Match.prototype.randomKind = function (r) {
@@ -395,7 +444,7 @@
       tx = z.cx + Math.cos(a) * d; tz = z.cz + Math.sin(a) * d;
       if (this.world.heightAt(tx, tz) > 1.5) break;
     }
-    z.tx = clamp(tx, 80, SIZE - 80); z.tz = clamp(tz, 80, SIZE - 80); z.tr = st.r;
+    z.tx = clamp(tx, 40, SIZE - 40); z.tz = clamp(tz, 40, SIZE - 40); z.tr = st.r;
     z.t = st.wait; z.shrinking = false; z.dps = st.dps;
     if (z.stage > 0) this.events.push({ t: 'zone', s: z.stage });
   };
@@ -415,7 +464,7 @@
   Match.prototype.outside = function (f) { return Math.hypot(f.x - this.zone.cx, f.z - this.zone.cz) > this.zone.r; };
 
   Match.prototype.damage = function (t, amount, by, w, head) {
-    if (!t.alive || this.state === 'end') return;
+    if (!t.alive || this.state === 'end' || t.prot > 0) return;
     amount = Math.round(amount);
     const s = Math.min(t.sh, amount);
     t.sh -= s; t.hp -= amount - s;
@@ -429,7 +478,7 @@
     if (k && k !== v) k.kills++;
     // Deja todo su botín en el piso
     const drops = [];
-    v.slots.forEach((s, i) => { if (s >= 0) drops.push([s, Math.max(v.ammo[i], 10)]); });
+    v.slots.forEach((s, i) => { if (s >= 0) drops.push([s, Math.max(v.ammo[i] + v.mag[i], 10)]); });
     if (v.meds) drops.push([LOOT.MED, v.meds]);
     if (v.shields) drops.push([LOOT.SHIELD, v.shields]);
     const added = [];
@@ -440,7 +489,7 @@
       const it = this.addItem(d[0], x, z, true, d[1]); added.push([it.id, it.k, it.x, it.y, it.z, it.a]);
     });
     if (added.length) this.events.push({ t: 'lootAdd', l: added });
-    v.slots = [-1, -1]; v.ammo = [0, 0]; v.meds = 0; v.shields = 0; v.iv++;
+    v.slots = [-1, -1]; v.ammo = [0, 0]; v.mag = [0, 0]; v.meds = 0; v.shields = 0; v.iv++;
     const aliveTeams = this.aliveTeams();
     if (![...this.fighters.values()].some(f => f.alive && f.team === v.team)) {
       const place = aliveTeams.size + 1;
@@ -464,10 +513,10 @@
   };
 
   // Disparo validado (humanos y bots usan lo mismo)
-  Match.prototype.fire = function (f, o, d, seed, fromClient) {
+  Match.prototype.fire = function (f, o, d, seed, fromClient, ads) {
     if (!f.alive || f.ph !== PH.GROUND || this.state === 'end') return false;
     const slot = f.cur, wIdx = f.slots[slot];
-    if (wIdx < 0 || f.ammo[slot] <= 0) return false;
+    if (wIdx < 0 || f.mag[slot] <= 0 || f.reloadEnd > this.time) return false;
     const w = WEAPONS[wIdx];
     if (fromClient) {
       f.budget = Math.min(2.5, f.budget + (this.time - f.budgetT) / w.rate); f.budgetT = this.time;
@@ -475,10 +524,10 @@
       f.budget -= 1;
       if (Math.hypot(o[0] - f.x, o[1] - (f.y + EYE), o[2] - f.z) > 3) { o = [f.x, f.y + EYE, f.z]; }
     } else if (this.time - f.lastShot < w.rate) return false;
-    f.lastShot = this.time;
-    f.ammo[slot]--;
+    f.lastShot = this.time; f.prot = 0;
+    f.mag[slot]--;
     const dl = Math.hypot(d[0], d[1], d[2]) || 1; d = [d[0] / dl, d[1] / dl, d[2] / dl];
-    const dirs = spreadDirs(wIdx, d, seed);
+    const dirs = spreadDirs(wIdx, d, seed, ads);
     const hits = new Map(), ends = [];
     const skip = (t) => t === f || t.team === f.team;
     const list = [...this.fighters.values()];
@@ -492,9 +541,23 @@
         hits.set(hf.f, h);
       }
     }
-    this.events.push({ t: 'shot', o: f.id, x: +o[0].toFixed(2), y: +o[1].toFixed(2), z: +o[2].toFixed(2), d: d.map(v => +v.toFixed(4)), w: wIdx, sd: seed, e: ends });
+    this.events.push({ t: 'shot', o: f.id, x: +o[0].toFixed(2), y: +o[1].toFixed(2), z: +o[2].toFixed(2), d: d.map(v => +v.toFixed(4)), w: wIdx, sd: seed, e: ends, a: ads ? 1 : 0 });
     for (const [t, h] of hits) this.damage(t, h.dmg, f, wIdx, h.head);
     return true;
+  };
+  Match.prototype.reload = function (f) {
+    const slot = f.cur, w = f.slots[slot];
+    if (!f.alive || w < 0 || f.reloadEnd > this.time || f.mag[slot] >= WEAPONS[w].mag || f.ammo[slot] <= 0) return false;
+    // Un poco más corta que en el cliente para absorber el retraso de la red
+    f.reloadEnd = this.time + WEAPONS[w].reload * (f.bot ? 1 : 0.85); f.reloadSlot = slot;
+    return true;
+  };
+  Match.prototype.finishReload = function (f) {
+    const slot = f.reloadSlot, w = f.slots[slot];
+    f.reloadEnd = 0;
+    if (w < 0) return;
+    const need = Math.min(WEAPONS[w].mag - f.mag[slot], f.ammo[slot]);
+    f.mag[slot] += need; f.ammo[slot] -= need; f.iv++;
   };
   Match.prototype.pickup = function (f, it, swap) {
     if (!f.alive || f.ph !== PH.GROUND || !it || Math.hypot(f.x - it.x, f.z - it.z) > 3) return false;
@@ -507,9 +570,10 @@
           if (!swap) return false;
           slot = f.cur;
           if (f.bot) slot = RANK[f.slots[0]] <= RANK[f.slots[1]] ? 0 : 1;
-          this.addItem(f.slots[slot], f.x + 0.8, f.z + 0.8, false, f.ammo[slot]);
+          this.addItem(f.slots[slot], f.x + 0.8, f.z + 0.8, false, f.ammo[slot] + f.mag[slot]);
+          if (f.reloadEnd && f.reloadSlot === slot) f.reloadEnd = 0;
         }
-        f.slots[slot] = it.k; f.ammo[slot] = it.a;
+        f.slots[slot] = it.k; f.mag[slot] = Math.min(WEAPONS[it.k].mag, it.a); f.ammo[slot] = it.a - f.mag[slot];
         if (f.slots[f.cur] < 0 || f.bot) f.cur = slot;
       }
     } else if (it.k === LOOT.MED) { if (f.meds >= 5) return false; f.meds = Math.min(5, f.meds + it.a); }
@@ -539,7 +603,6 @@
     if (!f || !f.alive || !m || num(m.l, -1) !== f.life) return;
     const ph = clamp(Math.round(num(m.ph, f.ph)), 0, 3);
     if (ph < f.ph) return;
-    if (f.ph === PH.PLANE && ph > PH.PLANE) { const p = planePos(this.plane, this.planeT); f.x = p.x; f.y = p.y; f.z = p.z; }
     f.ph = ph;
     if (ph === PH.PLANE) return;
     f.x = clamp(num(m.x, f.x), 0, SIZE); f.z = clamp(num(m.z, f.z), 0, SIZE); f.y = clamp(num(m.y, f.y), -20, PLANE_Y + 10);
@@ -551,34 +614,22 @@
     const f = this.fighters.get(id);
     if (!f || !m || num(m.l, -1) !== f.life || !Array.isArray(m.o) || !Array.isArray(m.d)) return;
     const o = m.o.slice(0, 3).map(v => num(v, 0)), d = m.d.slice(0, 3).map(v => num(v, 0));
-    if (Number.isInteger(m.c) && (m.c === 0 || m.c === 1)) f.cur = m.c;
-    this.fire(f, o, d, num(m.sd, 1) >>> 0, true);
+    if (Number.isInteger(m.c) && (m.c === 0 || m.c === 1) && f.cur !== m.c) { f.cur = m.c; f.reloadEnd = 0; }
+    this.fire(f, o, d, num(m.sd, 1) >>> 0, true, !!m.a);
   };
   Match.prototype.onPick = function (id, m) { const f = this.fighters.get(id); if (f) this.pickup(f, this.items.get(num(m.i, -1)), true); };
   Match.prototype.onUse = function (id, m) { const f = this.fighters.get(id); if (f) this.use(f, m.k === 'shield' ? 'shield' : 'med'); };
-  Match.prototype.onSlot = function (id, m) { const f = this.fighters.get(id); if (f && (m.c === 0 || m.c === 1)) f.cur = m.c; };
+  Match.prototype.onSlot = function (id, m) { const f = this.fighters.get(id); if (f && (m.c === 0 || m.c === 1)) { if (f.cur !== m.c) f.reloadEnd = 0; f.cur = m.c; } };
+  Match.prototype.onReload = function (id) { const f = this.fighters.get(id); if (f) this.reload(f); };
 
   /* ---------- Bots ---------- */
   const near2 = [];
   Match.prototype.updateBot = function (b, dt) {
     const D = DIFF[this.diff], W = this.world;
     const ai = b.ai || (b.ai = {});
-    if (ai.jumpAt == null) {
-      ai.jumpAt = this.plane.dur * (0.12 + Math.random() * 0.78);
-      const t = W.towns[Math.floor(Math.random() * W.towns.length)];
-      ai.land = Math.random() < 0.75 && t ? { x: t.x + (Math.random() - 0.5) * t.r, z: t.z + (Math.random() - 0.5) * t.r } : { x: 100 + Math.random() * (SIZE - 200), z: 100 + Math.random() * (SIZE - 200) };
-      Object.assign(ai, { t: 0, target: null, goal: null, strafe: 1, strafeT: 0, seen: 0, stuckT: 0, lx: b.x, lz: b.z, avoid: 0, avoidT: 0, errT: 0, ex: 0, ey: 0, wander: null });
-    }
-    const inp = { mx: 0, mz: 0, jump: false, chute: false };
-    if (b.ph === PH.PLANE) { if (this.planeT >= ai.jumpAt) b.ph = PH.FALL; return; }
-    if (b.ph === PH.FALL || b.ph === PH.CHUTE) {
-      const dx = ai.land.x - b.x, dz = ai.land.z - b.z;
-      b.yaw = Math.atan2(-dx, -dz);
-      inp.mz = Math.hypot(dx, dz) > 6 ? 1 : 0;
-      if (b.ph === PH.FALL && Math.hypot(dx, dz) > 300) inp.mz = 0.2;
-      stepFighter(b, inp, dt, W);
-      return;
-    }
+    if (ai.lx == null) Object.assign(ai, { t: 0, target: null, goal: null, strafe: 1, strafeT: 0, seen: 0, stuckT: 0, lx: b.x, lz: b.z, avoid: 0, avoidT: 0, errT: 0, ex: 0, ey: 0, wander: null });
+    const inp = { mx: 0, mz: 0, jump: false, chute: false, sprint: false };
+    if (b.ph !== PH.GROUND) { stepFighter(b, inp, dt, W); return; }
     if (this.state === 'end') { stepFighter(b, inp, dt, W); return; }
     ai.t -= dt; ai.strafeT -= dt; ai.avoidT -= dt; ai.errT -= dt;
     const eyeY = b.y + EYE;
@@ -621,14 +672,17 @@
       const tgt0 = ai.target != null ? this.fighters.get(ai.target) : null;
       if (b.slots[0] >= 0 && b.slots[1] >= 0 && tgt0) {
         const d = Math.hypot(tgt0.x - b.x, tgt0.z - b.z);
-        const score = (s, i) => (b.ammo[i] > 0 ? 1 : -9) + (d < 15 ? (s === 2 ? 3 : s === 1 ? 2 : 0) : d > 80 ? (s === 4 ? 3 : s === 3 ? 2 : 0) : (s === 3 ? 3 : s === 1 ? 2 : 0));
-        b.cur = score(b.slots[0], 0) >= score(b.slots[1], 1) ? 0 : 1;
-      } else if (b.slots[b.cur] < 0 || b.ammo[b.cur] <= 0) { const o = 1 - b.cur; if (b.slots[o] >= 0 && b.ammo[o] > 0) b.cur = o; }
+        const score = (s, i) => (b.ammo[i] + b.mag[i] > 0 ? 1 : -9) + (d < 15 ? (s === 2 ? 3 : s === 1 ? 2 : 0) : d > 80 ? (s === 4 ? 3 : s === 3 ? 2 : 0) : (s === 3 ? 3 : s === 1 ? 2 : 0));
+        const c = score(b.slots[0], 0) >= score(b.slots[1], 1) ? 0 : 1;
+        if (c !== b.cur) { b.cur = c; b.reloadEnd = 0; }
+      } else if (b.slots[b.cur] < 0 || b.ammo[b.cur] + b.mag[b.cur] <= 0) { const o = 1 - b.cur; if (b.slots[o] >= 0 && b.ammo[o] + b.mag[o] > 0) { b.cur = o; b.reloadEnd = 0; } }
+      if (!tgt0 && b.slots[b.cur] >= 0 && b.mag[b.cur] < WEAPONS[b.slots[b.cur]].mag * 0.5) this.reload(b);
       // Curarse cuando está tranquilo
       if (!tgt0) { if (b.hp < 65 && b.meds > 0) this.use(b, 'med'); else if (b.sh < 50 && b.shields > 0) this.use(b, 'shield'); }
     }
     const tgt = ai.target != null ? this.fighters.get(ai.target) : null;
-    const wIdx = b.slots[b.cur], hasGun = wIdx >= 0 && b.ammo[b.cur] > 0;
+    const wIdx = b.slots[b.cur], hasGun = wIdx >= 0 && b.ammo[b.cur] + b.mag[b.cur] > 0;
+    if (hasGun && b.mag[b.cur] <= 0) this.reload(b);
     if (tgt && tgt.alive && hasGun) {
       const w = WEAPONS[wIdx];
       const dx = tgt.x - b.x, dz = tgt.z - b.z, dist = Math.hypot(dx, dz);
@@ -643,7 +697,7 @@
       inp.mx = ai.strafe;
       inp.mz = dist > pd + 8 ? 1 : dist < pd - 6 ? -0.8 : 0;
       dyaw = Math.atan2(Math.sin(desiredYaw - b.yaw), Math.cos(desiredYaw - b.yaw));
-      if (ai.seen > D.react && Math.abs(dyaw) < 0.12 && dist < w.range && this.time - b.lastShot > w.rate * D.rate) {
+      if (ai.seen > D.react && Math.abs(dyaw) < 0.12 && dist < w.range && this.time - b.lastShot > w.rate * D.rate && b.mag[b.cur] > 0) {
         this.fire(b, [b.x, eyeY, b.z], dirFrom(b.yaw, b.pitch), (Math.random() * 4294967295) >>> 0, false);
       }
     } else {
@@ -655,7 +709,7 @@
         let yaw = Math.atan2(-dx, -dz);
         if (ai.avoidT > 0) yaw += ai.avoid;
         b.yaw = yaw; b.pitch *= 0.9;
-        inp.mz = d > 1.2 ? 1 : 0;
+        inp.mz = d > 1.2 ? 1 : 0; inp.sprint = d > 12 && !tgt;
         if (g.item != null && d < 2.2) { const it = this.items.get(g.item); if (it) this.pickup(b, it, true); ai.t = 0; }
         // Esquiva obstáculos mirando 2.5 m adelante
         const fx = b.x - Math.sin(b.yaw) * 2.5, fz = b.z - Math.cos(b.yaw) * 2.5;
@@ -675,21 +729,13 @@
     dt = Math.min(dt, 0.1);
     this.time += dt;
     if (this.state === 'end') { this.endT -= dt; }
-    if (this.planeT < this.plane.dur + 1) {
-      this.planeT += dt;
-      const p = planePos(this.plane, this.planeT);
-      for (const f of this.fighters.values()) {
-        if (f.ph !== PH.PLANE) continue;
-        f.x = p.x; f.y = p.y - 4; f.z = p.z;
-        if (this.planeT >= this.plane.dur) { f.ph = PH.FALL; f.vx = 0; f.vz = 0; f.vy = 0; if (!f.bot) this.events.push({ t: 'eject', id: f.id }); }
-      }
-      if (this.state === 'plane' && this.planeT >= this.plane.dur) this.state = 'play';
-    }
     this.updateZone(dt);
     this.zoneTick = (this.zoneTick || 0) + dt;
     const tick = this.zoneTick >= 1; if (tick) this.zoneTick -= 1;
     for (const f of this.fighters.values()) {
       if (!f.alive) continue;
+      if (f.prot > 0) f.prot = Math.max(0, f.prot - dt);
+      if (f.reloadEnd && this.time >= f.reloadEnd) this.finishReload(f);
       if (f.bot) this.updateBot(f, dt);
       if (tick && f.ph === PH.GROUND && this.outside(f) && this.state !== 'end') this.damage(f, this.zone.dps, null, -1, false);
     }
@@ -714,7 +760,7 @@
       f: [...this.fighters.values()].map(f => [
         f.id, r1(f.x), r1(f.y), r1(f.z), r2(f.yaw), r2(f.pitch), Math.max(0, Math.ceil(f.hp)), Math.ceil(f.sh), f.alive ? 1 : 0, f.ph,
         f.slots[f.cur], f.kills, f.life, f.iv, f.slots[0], f.slots[1], f.ammo[0], f.ammo[1], f.cur, f.meds, f.shields, f.place,
-        r1(f.vx), r1(f.vy), r1(f.vz), f.grounded ? 1 : 0,
+        r1(f.vx), r1(f.vy), r1(f.vz), f.grounded ? 1 : 0, f.mag[0], f.mag[1], f.reloadEnd ? 1 : 0, f.prot > 0 ? 1 : 0,
       ]),
     };
   };
@@ -722,6 +768,6 @@
 
   return {
     SIZE, EYE, RAD, HEIGHT, MAX_PLAYERS, PLANE_Y, PH, WEAPONS, LOOT, LOOT_NAMES, DIFF, ZONE, TEAM_COLORS,
-    rng, clamp, World, Match, makeFighter, stepFighter, planePos, dirFrom, spreadDirs, rayFighters, cleanName,
+    ADS_SPREAD, SPAWN_PROT, rng, clamp, World, Match, makeFighter, stepFighter, planePos, dirFrom, spreadDirs, rayFighters, cleanName,
   };
 });
