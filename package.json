@@ -1,8 +1,8 @@
 {
   "name": "meiker-battle-royale",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "private": true,
-  "description": "Meiker Stick Battle: shooter 2D de stickmen con salas online, bots y PWA instalable",
+  "description": "Meiker Battle Royale 3D: avión, paracaídas, zona, 20 jugadores, solo o dúo, lobby online y PWA instalable",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

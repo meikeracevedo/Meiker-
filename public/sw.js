@@ -1,6 +1,6 @@
 /* Service worker: guarda el juego para abrirlo rápido y jugar solo sin internet */
-const CACHE = 'meiker-v1';
-const ASSETS = ['/', '/index.html', '/style.css', '/game.js', '/sim.js', '/manifest.webmanifest', '/icons/icon.svg', '/icons/icon-192.png', '/icons/icon-512.png'];
+const CACHE = 'meiker-br-v1';
+const ASSETS = ['/', '/index.html', '/style.css', '/game3d.js', '/br.js', '/vendor/three.module.min.js', '/manifest.webmanifest', '/icons/icon.svg', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));

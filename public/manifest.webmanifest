@@ -1,7 +1,7 @@
 {
-  "name": "Meiker Stick Battle",
-  "short_name": "Meiker",
-  "description": "Batalla 2D de stickmen: online con tus amigos o contra bots.",
+  "name": "Meiker Battle Royale",
+  "short_name": "Meiker BR",
+  "description": "Battle royale 3D: salta del avión, recoge armas y sé el último en pie. Solo o en dúo.",
   "id": "/",
   "start_url": "/?app=1",
   "scope": "/",
