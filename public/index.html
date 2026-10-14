@@ -47,6 +47,7 @@
   <symbol id="i-fire" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></symbol>
   <symbol id="i-scope" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2"/><path d="M12 1.5v5M12 17.5v5M1.5 12h5M17.5 12h5"/></symbol>
   <symbol id="i-reload" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4.5V11h-6.5"/></symbol>
+  <symbol id="i-car" viewBox="0 0 24 24"><path d="M5 16V11l2-5h10l2 5v5M3.5 11h17M5 16h14"/><circle cx="7.5" cy="16.5" r="1.8"/><circle cx="16.5" cy="16.5" r="1.8"/></symbol>
   <symbol id="i-map" viewBox="0 0 24 24"><path d="M9 4L3.5 6v14L9 18l6 2 5.5-2V4L15 6zM9 4v14M15 6v14"/></symbol>
   <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></symbol>
   <symbol id="i-crown" viewBox="0 0 24 24"><path d="M4 18h16M5 15l-1-9 5 4 3-5 3 5 5-4-1 9z"/></symbol>
@@ -62,6 +63,7 @@
       <span class="glass chip"><svg class="ic"><use href="#i-users"/></svg><b class="rx-num" id="hudAlive">20</b><small>vivos</small></span>
       <span class="glass chip"><svg class="ic"><use href="#i-target"/></svg><b class="rx-num" id="hudKills">0</b><small>bajas</small></span>
       <span class="glass chip" id="pingChip" hidden>-- ms</span>
+      <span class="glass chip" id="speedChip" hidden>0 km/h</span>
     </div>
     <div class="glass hud-zone" id="hudZone">Preparando la isla</div>
     <div class="hud-right">
@@ -86,6 +88,7 @@
       <button class="glass item-btn" id="shieldBtn" aria-label="Usar escudo"><svg class="ic"><use href="#i-shield"/></svg><b class="rx-num" id="shieldN">0</b></button>
     </div>
   </div>
+  <button class="btn-glass hud-action car-action" id="carBtn" hidden><svg class="ic"><use href="#i-car"/></svg><span id="carText">Manejar</span></button>
   <button class="btn-primary hud-action" id="pickBtn" hidden><svg class="ic"><use href="#i-hand"/></svg><span id="pickText">Recoger</span></button>
   <div id="spectate" class="glass hidden">
     <div><b id="specTitle">Te bajaron</b><p class="muted" id="specSub"></p></div>
@@ -212,7 +215,8 @@
     </div>
     <div class="how-grid">
       <div><h3>La partida</h3><ul>
-        <li>Apareces con pistola y 3 segundos de protección. Busca armas en los pueblos y campamentos (cajas militares).</li>
+        <li>Apareces con pistola y 3 segundos de protección. Busca armas en Meiker City, Meketown, los pueblos y los campamentos.</li>
+        <li>Hay jeeps (4 puestos) y buggys (2 puestos) en las carreteras. Toca <b>Manejar</b> cerca de uno; tu compañero puede ir de pasajero y disparar. Atropellar también hace daño.</li>
         <li>Fuera de la zona pierdes vida cada segundo. Mira el mapa: el círculo amarillo es la próxima zona.</li>
         <li>Botiquín cura 50. Escudo da 50 de protección extra.</li></ul></div>
       <div><h3>En el celular</h3><ul>

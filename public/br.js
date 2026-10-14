@@ -7,7 +7,7 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  const SIZE = 400, EYE = 1.6, RAD = 0.45, HEIGHT = 1.8, MAX_PLAYERS = 20;
+  const SIZE = 460, EYE = 1.6, RAD = 0.45, HEIGHT = 1.8, MAX_PLAYERS = 20;
   const PLANE_Y = 280, PLANE_SPEED = 55;
   const PH = { PLANE: 0, FALL: 1, CHUTE: 2, GROUND: 3 };
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -60,98 +60,149 @@
     { name: 'Pro', err: 0.025, react: 0.3, rate: 1.05, range: 120 },
   ];
   const ZONE = [
-    { wait: 60, shrink: 30, r: 170, dps: 2 },
-    { wait: 40, shrink: 25, r: 105, dps: 3 },
-    { wait: 32, shrink: 22, r: 60, dps: 5 },
-    { wait: 26, shrink: 20, r: 30, dps: 7 },
-    { wait: 20, shrink: 18, r: 11, dps: 10 },
+    { wait: 65, shrink: 30, r: 195, dps: 2 },
+    { wait: 40, shrink: 25, r: 120, dps: 3 },
+    { wait: 32, shrink: 22, r: 68, dps: 5 },
+    { wait: 26, shrink: 20, r: 32, dps: 7 },
+    { wait: 20, shrink: 18, r: 12, dps: 10 },
     { wait: 15, shrink: 15, r: 0, dps: 15 },
   ];
   const TEAM_COLORS = ['#F5B50A', '#4FD1FF', '#FF6FAE', '#3DDC84', '#FF8A3D', '#B18CFF', '#F5F5F4', '#7CF2E0', '#FF5A5F', '#C9E265'];
   const BOT_NAMES = ['Pecoso', 'Mono', 'Flaco', 'Toño', 'Chepe', 'Nacho', 'Rolo', 'Paisa', 'Mancha', 'Gato', 'Pibe', 'Chucho', 'Lalo', 'Kike', 'Pelusa', 'Tato', 'Caliche', 'Juancho', 'Mafe', 'Lucho', 'Coco', 'Beto'];
-  const TOWN_NAMES = ['Puerto Arepa', 'La Loma', 'Villa Mango', 'El Ventarrón', 'Pico Neblina', 'Playa Brava', 'Los Cauchos', 'San Tintico', 'Bahía Panela', 'El Guadual', 'Mirador Luna'];
+  const TOWN_NAMES = ['Puerto Arepa', 'La Loma', 'Villa Mango', 'El Ventarrón', 'Pico Neblina', 'Playa Brava', 'Los Cauchos', 'San Tintico', 'Bahía Panela', 'El Guadual', 'Mirador Luna', 'Riverópolis'];
   const CAMP_NAMES = ['Bodega Norte', 'Campamento', 'Base Militar', 'El Depósito', 'Torre Radio', 'Contenedores'];
 
   /* ---------- Isla aleatoria ---------- */
+  function segDist(px, pz, ax, az, bx, bz) {
+    const dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz || 1;
+    const t = clamp(((px - ax) * dx + (pz - az) * dz) / l2, 0, 1);
+    return Math.hypot(px - (ax + dx * t), pz - (az + dz * t));
+  }
   function World(seed) {
     this.seed = seed >>> 0;
     const r = rng(seed);
+    // Zonas: Meiker City (la ciudad grande, cerca del centro), Meketown y pueblos con nombre al azar
     this.towns = [];
-    for (let tries = 0; this.towns.length < 5 && tries < 600; tries++) {
-      const x = SIZE / 2 + (r() - 0.5) * SIZE * 0.64, z = SIZE / 2 + (r() - 0.5) * SIZE * 0.64;
-      const h = this.rawHeight(x, z);
-      if (h < 3 || this.towns.some(t => Math.hypot(t.x - x, t.z - z) < 95)) continue;
-      this.towns.push({ x, z, r: 22 + r() * 12, base: h, name: TOWN_NAMES[(this.towns.length + Math.floor(r() * 3)) % TOWN_NAMES.length] });
-    }
-    const used = new Set();
-    this.towns.forEach(t => { while (used.has(t.name)) t.name = TOWN_NAMES[(TOWN_NAMES.indexOf(t.name) + 1) % TOWN_NAMES.length]; used.add(t.name); });
-
-    this.boxes = []; this.buildings = []; this.trees = []; this.rocks = [];
-    const lootSpots = [];
-    for (const t of this.towns) {
-      const n = 4 + Math.floor(r() * 3);
-      for (let i = 0, tries = 0; i < n && tries < 80; tries++) {
-        const a = r() * Math.PI * 2, d = r() * t.r * 0.85;
-        const w = 7 + r() * 6, dd = 7 + r() * 5, h = 4.5 + Math.floor(r() * 2) * 3.5 + r() * 1.5;
-        const x = t.x + Math.cos(a) * d, z = t.z + Math.sin(a) * d;
-        const b = { minX: x - w / 2, maxX: x + w / 2, minZ: z - dd / 2, maxZ: z + dd / 2, minY: t.base - 1, maxY: t.base + h, type: 'b', hue: Math.floor(r() * 5) };
-        if (this.buildings.some(o => b.minX < o.maxX + 6 && b.maxX > o.minX - 6 && b.minZ < o.maxZ + 6 && b.maxZ > o.minZ - 6)) continue;
-        this.buildings.push(b); this.boxes.push(b); i++;
-        const spots = 4 + Math.floor(r() * 3);
-        for (let k = 0; k < spots; k++) {
-          const side = Math.floor(r() * 4), off = r();
-          let lx = side < 2 ? b.minX + off * w : (side === 2 ? b.minX - 2.2 : b.maxX + 2.2);
-          let lz = side >= 2 ? b.minZ + off * dd : (side === 0 ? b.minZ - 2.2 : b.maxZ + 2.2);
-          lootSpots.push({ x: lx, z: lz });
-        }
+    const names = TOWN_NAMES.slice();
+    for (let i = names.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [names[i], names[j]] = [names[j], names[i]]; }
+    const plan = [{ name: 'Meiker City', big: 2, spread: 0.22, rad: 40 }, { name: 'Meketown', big: 1, spread: 0.62, rad: 30 }];
+    for (let i = 0; i < 5; i++) plan.push({ name: names[i], big: 0, spread: 0.66, rad: 20 + r() * 8 });
+    for (const pl of plan) {
+      for (let tries = 0; tries < 500; tries++) {
+        const x = SIZE / 2 + (r() - 0.5) * SIZE * pl.spread * 1.4, z = SIZE / 2 + (r() - 0.5) * SIZE * pl.spread * 1.4;
+        const h = this.rawHeight(x, z);
+        if (h < 3 || this.towns.some(t => Math.hypot(t.x - x, t.z - z) < t.r + pl.rad + 34)) continue;
+        if (Math.hypot(x - SIZE / 2, z - SIZE / 2) > SIZE * 0.36) continue;
+        this.towns.push({ x, z, r: pl.rad, base: h, name: pl.name, big: pl.big });
+        break;
       }
     }
     const land = (x, z) => this.rawHeight(x, z) > 2.5;
-    const inTown = (x, z, m) => this.towns.some(t => Math.hypot(t.x - x, t.z - z) < t.r + m) || (this.camps || []).some(c => Math.hypot(c.x - x, c.z - z) < 16 + m);
-    // Campamentos: cajas para cubrirse y mucho botín
-    this.camps = []; this.crates = []; this.lamps = [];
-    for (let tries = 0; this.camps.length < 4 && tries < 500; tries++) {
+    // Campamentos militares
+    this.camps = [];
+    for (let tries = 0; this.camps.length < 3 && tries < 500; tries++) {
       const x = 40 + r() * (SIZE - 80), z = 40 + r() * (SIZE - 80);
-      if (this.rawHeight(x, z) < 3 || inTown(x, z, 22) || this.camps.some(c => Math.hypot(c.x - x, c.z - z) < 60)) continue;
-      const h = this.rawHeight(x, z);
-      const camp = { x, z, name: CAMP_NAMES[this.camps.length % CAMP_NAMES.length] };
-      this.camps.push(camp);
+      if (this.rawHeight(x, z) < 3 || this.towns.some(t => Math.hypot(t.x - x, t.z - z) < t.r + 34) || this.camps.some(c => Math.hypot(c.x - x, c.z - z) < 60)) continue;
+      this.camps.push({ x, z, name: CAMP_NAMES[this.camps.length % CAMP_NAMES.length] });
+    }
+    // Carreteras: árbol de caminos que une todas las zonas
+    const nodes = this.towns.concat(this.camps);
+    this.roads = [];
+    const linked = [0];
+    while (linked.length < nodes.length) {
+      let best = null, bd = Infinity;
+      for (const i of linked) for (let j = 0; j < nodes.length; j++) {
+        if (linked.includes(j)) continue;
+        const d = Math.hypot(nodes[i].x - nodes[j].x, nodes[i].z - nodes[j].z);
+        if (d < bd) { bd = d; best = [i, j]; }
+      }
+      linked.push(best[1]);
+      this.roads.push({ ax: nodes[best[0]].x, az: nodes[best[0]].z, bx: nodes[best[1]].x, bz: nodes[best[1]].z });
+    }
+    const nearRoad = (x, z, m) => this.roads.some(rd => segDist(x, z, rd.ax, rd.az, rd.bx, rd.bz) < m);
+
+    this.boxes = []; this.buildings = []; this.trees = []; this.rocks = []; this.crates = []; this.lamps = []; this.walls = []; this.towers = []; this.statues = [];
+    const lootSpots = [];
+    for (const t of this.towns) {
+      const n = t.big === 2 ? 12 : t.big === 1 ? 8 : 4 + Math.floor(r() * 3);
+      if (t.big === 2) { // Plaza con estatua en Meiker City
+        const st = { minX: t.x - 1.2, maxX: t.x + 1.2, minZ: t.z - 1.2, maxZ: t.z + 1.2, minY: t.base - 0.5, maxY: t.base + 4.5, type: 's' };
+        this.statues.push(st); this.boxes.push(st);
+        for (let k = 0; k < 4; k++) lootSpots.push({ x: t.x + Math.cos(k * 1.57) * 4, z: t.z + Math.sin(k * 1.57) * 4 });
+      }
+      for (let i = 0, tries = 0; i < n && tries < 160; tries++) {
+        const a = r() * Math.PI * 2, d = (t.big === 2 ? 9 : 0) + r() * t.r * 0.85;
+        const floors = t.big === 2 ? 2 + Math.floor(r() * 4) : t.big === 1 ? 1 + Math.floor(r() * 3) : 1 + Math.floor(r() * 2);
+        const w = 7 + r() * (t.big ? 7 : 5), dd = 7 + r() * 5, h = 1 + floors * 3.5 + r();
+        const x = t.x + Math.cos(a) * d, z = t.z + Math.sin(a) * d;
+        const b = { minX: x - w / 2, maxX: x + w / 2, minZ: z - dd / 2, maxZ: z + dd / 2, minY: t.base - 1, maxY: t.base + h, type: 'b', hue: Math.floor(r() * 5), floors };
+        if (this.buildings.some(o => b.minX < o.maxX + 5 && b.maxX > o.minX - 5 && b.minZ < o.maxZ + 5 && b.maxZ > o.minZ - 5)) continue;
+        if (this.statues.some(o => b.minX < o.maxX + 6 && b.maxX > o.minX - 6 && b.minZ < o.maxZ + 6 && b.maxZ > o.minZ - 6)) continue;
+        if (nearRoad(x, z, Math.hypot(w, dd) / 2 + 4)) continue;
+        this.buildings.push(b); this.boxes.push(b); i++;
+        const spots = 4 + Math.floor(r() * 3) + (floors > 2 ? 2 : 0);
+        for (let k = 0; k < spots; k++) {
+          const side = Math.floor(r() * 4), off = r();
+          lootSpots.push({ x: side < 2 ? b.minX + off * w : (side === 2 ? b.minX - 2.2 : b.maxX + 2.2), z: side >= 2 ? b.minZ + off * dd : (side === 0 ? b.minZ - 2.2 : b.maxZ + 2.2) });
+        }
+      }
+      // Muros bajos para cubrirse
+      const nw = t.big ? 5 : 2 + Math.floor(r() * 2);
+      for (let k = 0, tries = 0; k < nw && tries < 40; tries++) {
+        const a = r() * Math.PI * 2, d = t.r * (0.4 + r() * 0.7), len = 5 + r() * 5, horiz = r() < 0.5;
+        const x = t.x + Math.cos(a) * d, z = t.z + Math.sin(a) * d, hh = this.rawHeight(x, z);
+        const wl = { minX: x - (horiz ? len / 2 : 0.25), maxX: x + (horiz ? len / 2 : 0.25), minZ: z - (horiz ? 0.25 : len / 2), maxZ: z + (horiz ? 0.25 : len / 2), minY: Math.min(t.base, hh) - 0.5, maxY: Math.max(t.base, hh) + 1.3, type: 'w' };
+        if (this.boxes.some(o => wl.minX < o.maxX + 2 && wl.maxX > o.minX - 2 && wl.minZ < o.maxZ + 2 && wl.maxZ > o.minZ - 2) || nearRoad(x, z, len / 2 + 3)) continue;
+        this.walls.push(wl); this.boxes.push(wl); k++;
+        lootSpots.push({ x: x + (horiz ? 0 : 1.2), z: z + (horiz ? 1.2 : 0) });
+      }
+      // Torre de agua en las zonas grandes
+      if (t.big || r() < 0.3) {
+        for (let tries = 0; tries < 30; tries++) {
+          const a = r() * Math.PI * 2, d = t.r * (0.6 + r() * 0.5), x = t.x + Math.cos(a) * d, z = t.z + Math.sin(a) * d;
+          const tw = { minX: x - 1.6, maxX: x + 1.6, minZ: z - 1.6, maxZ: z + 1.6, minY: t.base - 1, maxY: t.base + 14, type: 'tw', x, z, base: this.rawHeight(x, z) };
+          if (this.boxes.some(o => tw.minX < o.maxX + 3 && tw.maxX > o.minX - 3 && tw.minZ < o.maxZ + 3 && tw.maxZ > o.minZ - 3) || nearRoad(x, z, 5)) continue;
+          tw.base = this.heightAt ? tw.base : tw.base;
+          this.towers.push(tw); this.boxes.push(tw); break;
+        }
+      }
+      const nl = t.big === 2 ? 8 : t.big ? 5 : 3;
+      for (let k = 0; k < nl; k++) { const a = r() * Math.PI * 2, d = r() * t.r; this.lamps.push({ x: t.x + Math.cos(a) * d, z: t.z + Math.sin(a) * d }); }
+    }
+    for (const c of this.camps) {
       const n = 5 + Math.floor(r() * 4);
       for (let k = 0; k < n; k++) {
-        const a = (k / n) * Math.PI * 2 + r() * 0.5, d = 4 + r() * 8, s = 1.2 + r() * 0.9, tall = r() < 0.3;
-        const cx = x + Math.cos(a) * d, cz = z + Math.sin(a) * d, ch = this.rawHeight(cx, cz);
-        const c = { minX: cx - s / 2 * (tall ? 2.2 : 1), maxX: cx + s / 2 * (tall ? 2.2 : 1), minZ: cz - s / 2, maxZ: cz + s / 2, minY: ch - 0.6, maxY: ch + s * (tall ? 1.6 : 1), type: 'c', s };
-        this.crates.push(c); this.boxes.push(c);
-        lootSpots.push({ x: cx + Math.cos(a) * (s + 0.8), z: cz + Math.sin(a) * (s + 0.8) });
+        const a = (k / n) * Math.PI * 2 + r() * 0.5, d = 4 + r() * 8, sz = 1.2 + r() * 0.9, tall = r() < 0.3;
+        const cx = c.x + Math.cos(a) * d, cz = c.z + Math.sin(a) * d, ch = this.rawHeight(cx, cz);
+        if (nearRoad(cx, cz, 3)) continue;
+        const cr = { minX: cx - sz / 2 * (tall ? 2.2 : 1), maxX: cx + sz / 2 * (tall ? 2.2 : 1), minZ: cz - sz / 2, maxZ: cz + sz / 2, minY: ch - 0.6, maxY: ch + sz * (tall ? 1.6 : 1), type: 'c', s: sz };
+        this.crates.push(cr); this.boxes.push(cr);
+        lootSpots.push({ x: cx + Math.cos(a) * (sz + 0.8), z: cz + Math.sin(a) * (sz + 0.8) });
       }
-      lootSpots.push({ x, z }); lootSpots.push({ x: x + 2, z: z - 2 });
-      this.lamps.push({ x: x + 1.5, z: z + 1.5 });
+      lootSpots.push({ x: c.x, z: c.z }); lootSpots.push({ x: c.x + 2, z: c.z - 2 });
+      this.lamps.push({ x: c.x + 1.5, z: c.z + 1.5 });
     }
-    for (const t of this.towns) {
-      const n = 2 + Math.floor(r() * 3);
-      for (let k = 0; k < n; k++) { const a = r() * Math.PI * 2, d = r() * t.r; this.lamps.push({ x: t.x + Math.cos(a) * d, z: t.z + Math.sin(a) * d }); }
+    // Faroles a lo largo de las carreteras
+    for (const rd of this.roads) {
+      const L = Math.hypot(rd.bx - rd.ax, rd.bz - rd.az), nx = -(rd.bz - rd.az) / L, nz = (rd.bx - rd.ax) / L;
+      for (let d = 30; d < L - 30; d += 45) { const k = d / L; this.lamps.push({ x: rd.ax + (rd.bx - rd.ax) * k + nx * 4.5, z: rd.az + (rd.bz - rd.az) * k + nz * 4.5 }); }
     }
     this.lamps = this.lamps.filter(l => !this.boxes.some(b => l.x > b.minX - 0.5 && l.x < b.maxX + 0.5 && l.z > b.minZ - 0.5 && l.z < b.maxZ + 0.5));
+    const inZone = (x, z, m) => this.towns.some(t => Math.hypot(t.x - x, t.z - z) < t.r + m) || this.camps.some(c => Math.hypot(c.x - x, c.z - z) < 16 + m);
     for (let i = 0, tries = 0; i < 30 && tries < 2000; tries++) {
-      const x = 30 + r() * (SIZE - 60), z = 40 + r() * (SIZE - 80);
-      if (!land(x, z) || inTown(x, z, 4)) continue;
-      const s = 1.4 + r() * 2.2, h = this.heightAt(x, z);
-      const rock = { minX: x - s / 2, maxX: x + s / 2, minZ: z - s / 2, maxZ: z + s / 2, minY: h - 1, maxY: h + s * 0.75, type: 'r', s };
+      const x = 30 + r() * (SIZE - 60), z = 30 + r() * (SIZE - 60);
+      if (!land(x, z) || inZone(x, z, 4) || nearRoad(x, z, 5)) continue;
+      const sz = 1.4 + r() * 2.2, h = this.heightAt(x, z);
+      const rock = { minX: x - sz / 2, maxX: x + sz / 2, minZ: z - sz / 2, maxZ: z + sz / 2, minY: h - 1, maxY: h + sz * 0.75, type: 'r', s: sz };
       this.rocks.push(rock); this.boxes.push(rock); i++;
     }
-    for (let i = 0, tries = 0; i < 95 && tries < 4000; tries++) {
-      const x = 30 + r() * (SIZE - 60), z = 30 + r() * (SIZE - 60);
-      if (!land(x, z) || inTown(x, z, 8)) continue;
-      const h = this.heightAt(x, z), s = 0.75 + r() * 0.5;
-      const tree = { minX: x - 0.35, maxX: x + 0.35, minZ: z - 0.35, maxZ: z + 0.35, minY: h - 0.5, maxY: h + 9 * s, type: 't', s, x, z };
+    for (let i = 0, tries = 0; i < 100 && tries < 4000; tries++) {
+      const x = 25 + r() * (SIZE - 50), z = 25 + r() * (SIZE - 50);
+      if (!land(x, z) || inZone(x, z, 8) || nearRoad(x, z, 5)) continue;
+      const h = this.heightAt(x, z), sz = 0.75 + r() * 0.5;
+      const tree = { minX: x - 0.35, maxX: x + 0.35, minZ: z - 0.35, maxZ: z + 0.35, minY: h - 0.5, maxY: h + 9 * sz, type: 't', s: sz, x, z };
       this.trees.push(tree); this.boxes.push(tree); i++;
     }
-    for (let i = 0, tries = 0; i < 30 && tries < 1000; tries++) {
-      const x = 25 + r() * (SIZE - 50), z = 25 + r() * (SIZE - 50);
-      if (!land(x, z) || this.blocked(x, z)) continue;
-      lootSpots.push({ x, z }); i++;
-    }
-    this.lootSpots = lootSpots.filter(s => s.x > 10 && s.x < SIZE - 10 && s.z > 10 && s.z < SIZE - 10 && !this.blocked(s.x, s.z) && this.heightAt(s.x, s.z) > 0.5);
     // Rejilla para buscar obstáculos rápido
     this.cell = 20; this.gn = Math.ceil(SIZE / this.cell); this.grid = [];
     for (let i = 0; i < this.gn * this.gn; i++) this.grid.push([]);
@@ -160,6 +211,22 @@
       const z0 = clamp(Math.floor(b.minZ / this.cell), 0, this.gn - 1), z1 = clamp(Math.floor(b.maxZ / this.cell), 0, this.gn - 1);
       for (let gx = x0; gx <= x1; gx++) for (let gz = z0; gz <= z1; gz++) this.grid[gx * this.gn + gz].push(i);
     });
+    for (let i = 0, tries = 0; i < 30 && tries < 1000; tries++) {
+      const x = 25 + r() * (SIZE - 50), z = 25 + r() * (SIZE - 50);
+      if (!land(x, z) || this.blocked(x, z)) continue;
+      lootSpots.push({ x, z }); i++;
+    }
+    this.lootSpots = lootSpots.filter(sp => sp.x > 10 && sp.x < SIZE - 10 && sp.z > 10 && sp.z < SIZE - 10 && !this.blocked(sp.x, sp.z) && this.heightAt(sp.x, sp.z) > 0.5);
+    // Lugares para los vehículos: sobre las carreteras, cerca de las zonas
+    this.vehicleSpots = [];
+    for (const rd of this.roads) {
+      const L = Math.hypot(rd.bx - rd.ax, rd.bz - rd.az), yaw = Math.atan2(-(rd.bx - rd.ax), -(rd.bz - rd.az));
+      for (const k of [0.3, 0.7]) {
+        const x = rd.ax + (rd.bx - rd.ax) * k, z = rd.az + (rd.bz - rd.az) * k;
+        if (L < 50 && k > 0.5) continue;
+        if (this.heightAt(x, z) > 0.8 && !this.blocked(x, z)) this.vehicleSpots.push({ x, z, yaw: yaw + (k > 0.5 ? Math.PI : 0) });
+      }
+    }
   }
   World.prototype.rawHeight = function (x, z) {
     const n = fbm(x / 85, z / 85, this.seed);
@@ -200,21 +267,25 @@
     }
     return false;
   };
-  World.prototype.collide = function (f) {
+  World.prototype.collide = function (f) { return this.collideCircle(f, RAD, f.y, f.y + HEIGHT); };
+  World.prototype.collideCircle = function (f, rad, y0, y1) {
+    let hit = false;
     for (const k of this.near(f.x, f.z, tmpNear)) {
       const b = this.boxes[k];
-      if (f.y + HEIGHT <= b.minY || f.y >= b.maxY - 0.05) continue;
+      if (y1 <= b.minY || y0 >= b.maxY - 0.05) continue;
       const cx = clamp(f.x, b.minX, b.maxX), cz = clamp(f.z, b.minZ, b.maxZ);
       let dx = f.x - cx, dz = f.z - cz;
       const d2 = dx * dx + dz * dz;
-      if (d2 >= RAD * RAD) continue;
-      if (d2 > 1e-8) { const d = Math.sqrt(d2); f.x = cx + dx / d * RAD; f.z = cz + dz / d * RAD; }
+      if (d2 >= rad * rad) continue;
+      hit = true;
+      if (d2 > 1e-8) { const d = Math.sqrt(d2); f.x = cx + dx / d * rad; f.z = cz + dz / d * rad; }
       else {
         const pen = [f.x - b.minX, b.maxX - f.x, f.z - b.minZ, b.maxZ - f.z];
         const m = pen.indexOf(Math.min(...pen));
-        if (m === 0) f.x = b.minX - RAD; else if (m === 1) f.x = b.maxX + RAD; else if (m === 2) f.z = b.minZ - RAD; else f.z = b.maxZ + RAD;
+        if (m === 0) f.x = b.minX - rad; else if (m === 1) f.x = b.maxX + rad; else if (m === 2) f.z = b.minZ - rad; else f.z = b.maxZ + rad;
       }
     }
+    return hit;
   };
   function rayBox(ox, oy, oz, dx, dy, dz, b, maxD) {
     let t0 = 0, t1 = maxD;
@@ -281,6 +352,38 @@
     return { d: best, f: hit, head };
   }
 
+  /* ---------- Vehículos ---------- */
+  const VEHICLES = [
+    { key: 'jeep', name: 'Jeep', seats: 4, max: 19, accel: 9, turn: 1.5, radius: 1.5 },
+    { key: 'buggy', name: 'Buggy', seats: 2, max: 25, accel: 13, turn: 1.9, radius: 1.25 },
+  ];
+  // Puestos (x lateral, altura, z hacia atrás) relativos al carro
+  const SEATS = [[-0.42, 0.75, -0.05], [0.42, 0.75, -0.05], [-0.42, 0.85, 1.15], [0.42, 0.85, 1.15]];
+  function seatPos(v, seat) {
+    const s = SEATS[seat], c = Math.cos(v.yaw), n = Math.sin(v.yaw);
+    return { x: v.x + s[0] * c + s[2] * n, y: v.y + s[1], z: v.z - s[0] * n + s[2] * c };
+  }
+  // inp: { mz: acelerar(+)/reversa(-), mx: girar }
+  function stepVehicle(v, inp, dt, world) {
+    const T = VEHICLES[v.type];
+    const th = clamp(num(inp.mz, 0), -1, 1), st = clamp(num(inp.mx, 0), -1, 1);
+    if (th > 0.05) v.speed = Math.min(T.max, v.speed + T.accel * th * dt * (v.speed < 0 ? 2.5 : 1));
+    else if (th < -0.05) v.speed = Math.max(-T.max * 0.4, v.speed + T.accel * th * dt * (v.speed > 0 ? 2.5 : 1));
+    else v.speed *= Math.pow(0.4, dt);
+    if (Math.abs(v.speed) < 0.08 && Math.abs(th) < 0.05) v.speed = 0;
+    // Gira más fácil a velocidad media; en reversa el volante se invierte
+    const turnK = clamp(Math.abs(v.speed) / 5, 0, 1) * (1 - clamp((Math.abs(v.speed) - 15) / 25, 0, 0.4)) * Math.sign(v.speed || 1);
+    v.yaw -= st * T.turn * turnK * dt;
+    v.yaw = Math.atan2(Math.sin(v.yaw), Math.cos(v.yaw));
+    const fx = -Math.sin(v.yaw), fz = -Math.cos(v.yaw);
+    const nx = v.x + fx * v.speed * dt, nz = v.z + fz * v.speed * dt;
+    if (world.heightAt(nx, nz) < 0.3 || nx < 5 || nz < 5 || nx > SIZE - 5 || nz > SIZE - 5) { v.speed *= -0.3; v.bump = 1; }
+    else { v.x = nx; v.z = nz; }
+    v.y = world.heightAt(v.x, v.z);
+    if (world.collideCircle(v, T.radius, v.y + 0.2, v.y + 1.8)) { if (Math.abs(v.speed) > 4) v.bump = 1; v.speed *= -0.25; }
+    v.y = world.heightAt(v.x, v.z);
+  }
+
   /* ---------- Movimiento ---------- */
   function dirFrom(yaw, pitch) {
     const c = Math.cos(pitch);
@@ -307,6 +410,7 @@
   function makeFighter(id, name, bot, team, color) {
     return {
       id, name, bot: !!bot, team, color, x: SIZE / 2, y: PLANE_Y, z: SIZE / 2, vx: 0, vy: 0, vz: 0, yaw: 0, pitch: 0,
+      veh: 0, seat: 0, runT: 0,
       hp: 100, sh: 0, alive: true, ph: PH.PLANE, slots: [-1, -1], ammo: [0, 0], mag: [0, 0], reloadEnd: 0, prot: 0, cur: 0, meds: 0, shields: 0, iv: 0,
       kills: 0, life: 1, lastShot: -9, budget: 1, budgetT: 0, jumpHeld: false, chuteHeld: false, grounded: false,
       place: 0, useT: 0, ai: null, run: 0, dmgDone: 0,
@@ -386,6 +490,13 @@
       this.fighters.set(f.id, f);
     }
     this.spawnAll(r);
+    this.vehicles = new Map();
+    const spots = this.world.vehicleSpots.slice();
+    for (let i = spots.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [spots[i], spots[j]] = [spots[j], spots[i]]; }
+    spots.slice(0, 9).forEach((sp, i) => {
+      const v = { id: i + 1, type: r() < 0.55 ? 0 : 1, x: sp.x, z: sp.z, y: this.world.heightAt(sp.x, sp.z), yaw: sp.yaw, speed: 0, seats: [0, 0, 0, 0], bump: 0 };
+      this.vehicles.set(v.id, v);
+    });
     // Botín inicial
     for (const s of this.world.lootSpots) if (r() < 0.82) this.addItem(this.randomKind(r), s.x, s.z, true);
     this.events.push({ t: 'start', seed: this.seed, mode: this.mode, plane: null, roster: this.roster(), loot: this.lootList() });
@@ -475,6 +586,7 @@
   };
   Match.prototype.kill = function (v, k, w, head) {
     v.alive = false; v.hp = 0;
+    if (v.veh) this.leaveVehicle(v, true);
     if (k && k !== v) k.kills++;
     // Deja todo su botín en el piso
     const drops = [];
@@ -514,7 +626,7 @@
 
   // Disparo validado (humanos y bots usan lo mismo)
   Match.prototype.fire = function (f, o, d, seed, fromClient, ads) {
-    if (!f.alive || f.ph !== PH.GROUND || this.state === 'end') return false;
+    if (!f.alive || f.ph !== PH.GROUND || this.state === 'end' || (f.veh && f.seat === 0)) return false;
     const slot = f.cur, wIdx = f.slots[slot];
     if (wIdx < 0 || f.mag[slot] <= 0 || f.reloadEnd > this.time) return false;
     const w = WEAPONS[wIdx];
@@ -545,6 +657,62 @@
     for (const [t, h] of hits) this.damage(t, h.dmg, f, wIdx, h.head);
     return true;
   };
+  Match.prototype.enterVehicle = function (f, vid) {
+    const v = this.vehicles.get(vid);
+    if (!v || !f.alive || f.veh || f.ph !== PH.GROUND || Math.hypot(f.x - v.x, f.z - v.z) > 4.5) return false;
+    const n = VEHICLES[v.type].seats;
+    let seat = -1;
+    for (let i = 0; i < n; i++) if (!v.seats[i]) { seat = i; break; }
+    if (seat < 0) return false;
+    v.seats[seat] = f.id; f.veh = v.id; f.seat = seat; f.reloadEnd = 0;
+    const p = seatPos(v, seat); f.x = p.x; f.y = p.y; f.z = p.z; f.vx = f.vz = f.vy = 0;
+    this.events.push({ t: 'vin', id: f.id, v: v.id, s: seat });
+    return true;
+  };
+  Match.prototype.leaveVehicle = function (f, dead) {
+    const v = this.vehicles.get(f.veh);
+    if (v) v.seats[f.seat] = 0;
+    const seat = f.seat; f.veh = 0; f.seat = 0;
+    if (dead || !v) return;
+    // Se baja por su lado del carro; si está bloqueado, por el otro o por detrás
+    const side = SEATS[seat][0] < 0 ? -1 : 1, c = Math.cos(v.yaw), n = Math.sin(v.yaw);
+    for (const [lx, lz] of [[side * 2, 0], [-side * 2, 0], [0, 3.2], [0, -3.2]]) {
+      const x = v.x + lx * c + lz * n, z = v.z - lx * n + lz * c;
+      if (this.world.heightAt(x, z) > 0.4 && !this.world.blocked(x, z)) { f.x = x; f.z = z; break; }
+    }
+    f.y = this.world.heightAt(f.x, f.z); f.vx = f.vz = f.vy = 0; f.grounded = true;
+    this.events.push({ t: 'vout', id: f.id, v: v.id, x: +f.x.toFixed(2), z: +f.z.toFixed(2) });
+  };
+  Match.prototype.onVeh = function (id, m) {
+    const f = this.fighters.get(id); if (!f || !m) return;
+    if (m.a === 'in') this.enterVehicle(f, num(m.i, -1));
+    else if (m.a === 'out' && f.veh) this.leaveVehicle(f, false);
+  };
+  Match.prototype.updateVehicles = function (dt) {
+    for (const v of this.vehicles.values()) {
+      const driver = v.seats[0] ? this.fighters.get(v.seats[0]) : null;
+      if (!driver || driver.bot) stepVehicle(v, { mz: 0, mx: 0 }, dt, this.world);
+      for (let i = 0; i < 4; i++) {
+        const f = v.seats[i] ? this.fighters.get(v.seats[i]) : null;
+        if (!f || !f.alive || f.veh !== v.id) { v.seats[i] = 0; continue; }
+        const p = seatPos(v, i); f.x = p.x; f.y = p.y; f.z = p.z; f.grounded = true;
+        const fx = -Math.sin(v.yaw), fz = -Math.cos(v.yaw); f.vx = fx * v.speed; f.vz = fz * v.speed;
+      }
+      // Atropellar
+      if (Math.abs(v.speed) > 6 && this.state !== 'end') {
+        const R = VEHICLES[v.type].radius + 0.6;
+        for (const f of this.fighters.values()) {
+          if (!f.alive || f.veh || f.runT > this.time || Math.abs(f.x - v.x) > R || Math.abs(f.z - v.z) > R) continue;
+          if (Math.hypot(f.x - v.x, f.z - v.z) > R || Math.abs(f.y - v.y) > 2.2) continue;
+          if (driver && !this.isEnemy(driver, f)) continue;
+          f.runT = this.time + 0.8;
+          if (f.bot) { f.vx += -Math.sin(v.yaw) * v.speed * 0.8; f.vz += -Math.cos(v.yaw) * v.speed * 0.8; f.vy = 5; f.grounded = false; }
+          this.damage(f, Math.abs(v.speed) * 3.6, driver, -3, false);
+          this.events.push({ t: 'bump', v: v.id });
+        }
+      }
+    }
+  };
   Match.prototype.reload = function (f) {
     const slot = f.cur, w = f.slots[slot];
     if (!f.alive || w < 0 || f.reloadEnd > this.time || f.mag[slot] >= WEAPONS[w].mag || f.ammo[slot] <= 0) return false;
@@ -560,7 +728,7 @@
     f.mag[slot] += need; f.ammo[slot] -= need; f.iv++;
   };
   Match.prototype.pickup = function (f, it, swap) {
-    if (!f.alive || f.ph !== PH.GROUND || !it || Math.hypot(f.x - it.x, f.z - it.z) > 3) return false;
+    if (!f.alive || f.ph !== PH.GROUND || f.veh || !it || Math.hypot(f.x - it.x, f.z - it.z) > 3) return false;
     if (it.k < 10) {
       const same = f.slots.indexOf(it.k);
       if (same >= 0) { f.ammo[same] = Math.min(WEAPONS[it.k].ammo * 1.5, f.ammo[same] + it.a); }
@@ -601,6 +769,16 @@
   Match.prototype.onState = function (id, m) {
     const f = this.fighters.get(id);
     if (!f || !f.alive || !m || num(m.l, -1) !== f.life) return;
+    if (f.veh) {
+      f.yaw = num(m.yw, f.yaw); f.pitch = clamp(num(m.pt, f.pitch), -1.5, 1.5);
+      const v = this.vehicles.get(f.veh);
+      // El conductor manda la posición del carro (se ignoran saltos imposibles)
+      if (v && f.seat === 0 && Array.isArray(m.v) && m.v.length === 4) {
+        const x = num(m.v[0], v.x), z = num(m.v[1], v.z);
+        if (Math.hypot(x - v.x, z - v.z) < 40) { v.x = clamp(x, 0, SIZE); v.z = clamp(z, 0, SIZE); v.y = this.world.heightAt(v.x, v.z); v.yaw = num(m.v[2], v.yaw); v.speed = clamp(num(m.v[3], 0), -15, 30); }
+      }
+      return;
+    }
     const ph = clamp(Math.round(num(m.ph, f.ph)), 0, 3);
     if (ph < f.ph) return;
     f.ph = ph;
@@ -730,13 +908,14 @@
     this.time += dt;
     if (this.state === 'end') { this.endT -= dt; }
     this.updateZone(dt);
+    this.updateVehicles(dt);
     this.zoneTick = (this.zoneTick || 0) + dt;
     const tick = this.zoneTick >= 1; if (tick) this.zoneTick -= 1;
     for (const f of this.fighters.values()) {
       if (!f.alive) continue;
       if (f.prot > 0) f.prot = Math.max(0, f.prot - dt);
       if (f.reloadEnd && this.time >= f.reloadEnd) this.finishReload(f);
-      if (f.bot) this.updateBot(f, dt);
+      if (f.bot && !f.veh) this.updateBot(f, dt);
       if (tick && f.ph === PH.GROUND && this.outside(f) && this.state !== 'end') this.damage(f, this.zone.dps, null, -1, false);
     }
     // Recoger automáticamente lo que no necesita botón
@@ -744,7 +923,7 @@
     if (this.pickT > 0.2) {
       this.pickT = 0;
       for (const f of this.fighters.values()) {
-        if (!f.alive || f.bot || f.ph !== PH.GROUND) continue;
+        if (!f.alive || f.bot || f.ph !== PH.GROUND || f.veh) continue;
         for (const it of this.items.values()) {
           if (Math.abs(it.x - f.x) > 1.6 || Math.abs(it.z - f.z) > 1.6) continue;
           if (it.k >= 10 || f.slots.includes(-1) || f.slots.includes(it.k)) this.pickup(f, it, false);
@@ -762,16 +941,17 @@
       f: [...this.fighters.values()].map(f => {
         if (!f.alive) return [f.id, -1, f.kills, f.place];
         const a = [f.id, r1(f.x), r1(f.y), r1(f.z), r2(f.yaw), r2(f.pitch), Math.max(0, Math.ceil(f.hp)), Math.ceil(f.sh), 1, f.ph,
-          f.slots[f.cur], f.kills, f.life, r1(f.vx), r1(f.vy), r1(f.vz), f.grounded ? 1 : 0, f.reloadEnd ? 1 : 0, f.prot > 0 ? 1 : 0, f.place];
+          f.slots[f.cur], f.kills, f.life, r1(f.vx), r1(f.vy), r1(f.vz), f.grounded ? 1 : 0, f.reloadEnd ? 1 : 0, f.prot > 0 ? 1 : 0, f.place, f.veh, f.seat];
         if (viewerTeam == null || f.team === viewerTeam) a.push(f.iv, f.slots[0], f.slots[1], f.ammo[0], f.ammo[1], f.cur, f.meds, f.shields, f.mag[0], f.mag[1]);
         return a;
       }),
+      v: [...this.vehicles.values()].map(v => [v.id, v.type, r1(v.x), r1(v.y), r1(v.z), r2(v.yaw), r1(v.speed), v.seats[0], v.seats[1], v.seats[2], v.seats[3], v.bump ? (v.bump = 0, 1) : 0]),
     };
   };
   Match.prototype.drain = function () { const e = this.events; this.events = []; return e; };
 
   return {
     SIZE, EYE, RAD, HEIGHT, MAX_PLAYERS, PLANE_Y, PH, WEAPONS, LOOT, LOOT_NAMES, DIFF, ZONE, TEAM_COLORS,
-    ADS_SPREAD, SPAWN_PROT, rng, clamp, World, Match, makeFighter, stepFighter, planePos, dirFrom, spreadDirs, rayFighters, cleanName,
+    VEHICLES, SEATS, seatPos, stepVehicle, ADS_SPREAD, SPAWN_PROT, rng, clamp, World, Match, makeFighter, stepFighter, planePos, dirFrom, spreadDirs, rayFighters, cleanName,
   };
 });
