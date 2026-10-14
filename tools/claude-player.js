@@ -59,7 +59,9 @@ ws.on("message", (raw) => {
       if (o && fake.isEnemy(o, me)) {
         const a = Math.atan2(me.y - 34 - (ev.y - S.SHOULDER), me.x - ev.x);
         const d = Math.hypot(me.x - ev.x, me.y - ev.y);
-        if (d < 1400 && Math.abs(Math.atan2(Math.sin(a - ev.a), Math.cos(a - ev.a))) < 0.35) dodge();
+        const off = Math.abs(Math.atan2(Math.sin(a - ev.a), Math.cos(a - ev.a)));
+        if (process.env.GOD && d < 2400 && (off < 0.45 || (ev.w === 5 && d < 600))) godEscape(o);
+        else if (d < 1400 && off < 0.35) dodge();
       }
     }
     if (ev.t === "roster") { roster = new Map(ev.l.map(r => [r[0], r])); }
@@ -98,6 +100,37 @@ function dodge() {
     me.dashDir = Math.random() < 0.5 ? -1 : 1;
   } else if (me.onGround || me.jumps < 2) me.jbuf = S.PHYS.buffer;
 }
+// Modo dios (GOD=1): no puede tocar la vida en el servidor, pero sí su posición
+let blinkCd = 0, lootT = 0;
+function blinkTo(x, y, why) {
+  Object.assign(me, { x, y, vx: 0, vy: 0, onGround: true });
+  send({ t: "st", x, y, vx: 0, vy: 0, a: me.aim, l: me.life, g: 1, d: 0 });
+  if (why) console.log(why);
+}
+function godEscape(shooter) {
+  if (blinkCd > 0) return;
+  let best = null, bs = -Infinity;
+  for (const sp of map.spawns) {
+    if (S.overlapSolid(map, sp.x - 12, sp.y - 60, sp.x + 12, sp.y - 0.5)) continue;
+    let near = 4000;
+    for (const o of others.values()) if (o !== me && o.alive && fake.isEnemy(me, o)) near = Math.min(near, Math.hypot(o.x - sp.x, o.y - sp.y));
+    const hidden = !S.canSee(map, shooter.x, shooter.y - S.SHOULDER, sp.x, sp.y - 34);
+    const sc = near + (hidden ? 600 : 0) + Math.random() * 200;
+    if (sc > bs) { bs = sc; best = sp; }
+  }
+  if (best) { blinkCd = 0.15; ninjaT = Math.max(ninjaT, 1.2); blinkTo(best.x, best.y, "Esquivé a " + (roster.get(shooter.id)?.[1] || "?")); }
+}
+function godLoot(dt) {
+  blinkCd -= dt; lootT -= dt;
+  if (lootT > 0) return;
+  lootT = 0.4;
+  const want = (k) => (k === S.PICK_HP && me.hp < 75) || (k === S.PICK_ARMOR && me.armor < 100) || ((k === 5 || k === 4) && me.w !== 5 && me.w !== 4) || (k > 0 && k < 6 && me.w === 0);
+  const order = [S.PICK_HP, 5, 4, S.PICK_ARMOR, 3, 2, 1];
+  for (const k of order) {
+    const p = pickups.find(p => p.active && p.kind === k && want(k));
+    if (p) { blinkTo(p.x, p.y, "Agarré " + (S.WEAPONS[k]?.name || S.PICK_NAMES[k])); return; }
+  }
+}
 let hopT = 0, ninjaT = 3, spinT = 0;
 // Modo ninja (NINJA=1): cada pocos segundos se teletransporta a la espalda del rival más cercano
 function ninjaStep(dt) {
@@ -131,6 +164,7 @@ setInterval(() => {
   // Movimiento evasivo constante: saltitos impredecibles
   hopT -= dt;
   if (hopT <= 0) { hopT = 0.35 + Math.random() * 0.6; if (me.onGround && Math.random() < 0.6) me.jbuf = S.PHYS.buffer; }
+  if (process.env.GOD) godLoot(dt);
   if (process.env.NINJA && ninjaStep(dt)) {
     // Giro de celebración en el aire después de cada baja
     S.stepFighter(me, { mx: 0, jump: true }, dt, map);
