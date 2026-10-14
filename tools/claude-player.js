@@ -7,7 +7,12 @@ const [base, code, name = "CLAUDE"] = process.argv.slice(2);
 if (!base || !code) { console.log("Uso: node tools/claude-player.js https://tu-juego.onrender.com ABCD [NOMBRE]"); process.exit(1); }
 const wsUrl = base.replace(/^http/, "ws").replace(/\/$/, "") + "/ws";
 
-const ws = new WebSocket(wsUrl);
+// Si hay proxy de salida (HTTPS_PROXY), conectar a través de él
+let agent;
+const proxy = process.env.HTTPS_PROXY || process.env.https_proxy;
+if (proxy) { try { const { HttpsProxyAgent } = require("https-proxy-agent"); agent = new HttpsProxyAgent(proxy); } catch (_) {} }
+const ws = new WebSocket(wsUrl, agent ? { agent } : {});
+ws.on("error", (e) => { console.log("Error de conexión:", e.message); process.exit(1); });
 let myId = null, me = null, map = null, seed = null, roster = new Map(), others = new Map(), pickups = [], st = 0, mode = "ffa";
 let lastShot = -9, clock = 0;
 
@@ -43,6 +48,15 @@ ws.on("message", (raw) => {
   }
   if (m.t !== "s" || !me) return;
   for (const ev of m.ev) {
+    // Esquive: si un rival dispara apuntándome, salto o impulso al instante
+    if (ev.t === "shot" && ev.o !== myId && me.alive) {
+      const o = others.get(ev.o);
+      if (o && fake.isEnemy(o, me)) {
+        const a = Math.atan2(me.y - 34 - (ev.y - S.SHOULDER), me.x - ev.x);
+        const d = Math.hypot(me.x - ev.x, me.y - ev.y);
+        if (d < 1400 && Math.abs(Math.atan2(Math.sin(a - ev.a), Math.cos(a - ev.a))) < 0.35) dodge();
+      }
+    }
     if (ev.t === "roster") { roster = new Map(ev.l.map(r => [r[0], r])); }
     if (ev.t === "hit" && ev.id === myId) { me.vx += ev.kx || 0; me.vy += ev.ky || 0; me.lastAttacker = ev.by; }
     if (ev.t === "kill" && ev.k === myId) console.log("Baja a", roster.get(ev.v)?.[1]);
@@ -73,9 +87,19 @@ ws.on("message", (raw) => {
 });
 ws.on("close", () => { console.log("Conexión cerrada"); process.exit(0); });
 
+function dodge() {
+  if (me.dashCd <= 0 && Math.random() < 0.45) {
+    me.dashT = S.PHYS.dashTime; me.dashCd = S.PHYS.dashCd;
+    me.dashDir = Math.random() < 0.5 ? -1 : 1;
+  } else if (me.onGround || me.jumps < 2) me.jbuf = S.PHYS.buffer;
+}
+let hopT = 0;
 setInterval(() => {
   const dt = 1 / 30; clock += dt;
   if (!me || !me.alive || !map) return;
+  // Movimiento evasivo constante: saltitos impredecibles
+  hopT -= dt;
+  if (hopT <= 0) { hopT = 0.35 + Math.random() * 0.6; if (me.onGround && Math.random() < 0.6) me.jbuf = S.PHYS.buffer; }
   S.Room.prototype.updateBot.call(fake, me, dt);
   send({ t: "st", x: me.x, y: me.y, vx: me.vx, vy: me.vy, a: me.aim, l: me.life, g: me.onGround ? 1 : 0, d: me.dashT > 0 ? 1 : 0 });
 }, 1000 / 30);
