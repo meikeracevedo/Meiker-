@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0E0E10">
+<meta name="description" content="Batalla 2D de stickmen: online con tus amigos o contra bots, directo desde el celular.">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Meiker">
+<title>Meiker Stick Battle</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13a1 1 0 0 0 1.5.9l10-6.5a1 1 0 0 0 0-1.7l-10-6.5A1 1 0 0 0 8 5.5z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14a6.5 6.5 0 0 1 3.5 6"/></symbol>
+  <symbol id="i-bot" viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="11" rx="4"/><path d="M12 4v4M9 13h.01M15 13h.01M9.5 16.5h5"/></symbol>
+  <symbol id="i-enter" viewBox="0 0 24 24"><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"/><path d="M4 12h11M11 8l4 4-4 4"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 15V4M8 8l4-4 4 4M5 13v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></symbol>
+  <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5.5a2.5 2.5 0 0 0 2.7 4M16 6h2.5a2.5 2.5 0 0 1-2.7 4M12 13v4M8.5 20.5h7M10 17h4v3.5h-4z"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3L5 13.5h6L10 21l8-10.5h-6z"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V6M6 11l6-6 6 6"/></symbol>
+  <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/></symbol>
+  <symbol id="i-sound" viewBox="0 0 24 24"><path d="M4 9.5h3l5-4v13l-5-4H4z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/></symbol>
+  <symbol id="i-vibe" viewBox="0 0 24 24"><rect x="8" y="3.5" width="8" height="17" rx="2.5"/><path d="M4.5 9v6M19.5 9v6"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M8 11l4 4 4-4M5 19.5h14"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.6v.01"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6.5h11M9 12h11M9 17.5h11M4.5 6.5h.01M4.5 12h.01M4.5 17.5h.01"/></symbol>
+  <symbol id="i-rotate" viewBox="0 0 24 24"><rect x="3.5" y="8" width="17" height="10" rx="2.5"/><path d="M7 4.5a8 8 0 0 1 10 0M15.5 3l1.5 1.5-1.5 1.5"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="3"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></symbol>
+  <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+</svg>
+
+<canvas id="game" aria-label="Arena de Meiker Stick Battle"></canvas>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div class="hud-top">
+    <div class="glass hud-life">
+      <div class="hud-name" id="hudName">Jugador</div>
+      <div class="bar"><i id="hpBar"></i></div>
+      <div class="bar bar-armor"><i id="armorBar"></i></div>
+    </div>
+    <button class="glass hud-score" id="scoreBtn" aria-label="Ver tabla de puntos">
+      <span class="rx-num" id="hudTimer">5:00</span>
+      <span class="hud-score-line" id="hudScore">0 bajas</span>
+    </button>
+    <div class="hud-right">
+      <button class="glass chip" id="codeChip" hidden aria-label="Compartir sala"><svg class="ic"><use href="#i-share"/></svg><span id="codeText">----</span></button>
+      <span class="glass chip" id="pingChip" hidden>-- ms</span>
+      <button class="glass icon-btn" id="pauseBtn" aria-label="Pausa"><svg class="ic"><use href="#i-pause"/></svg></button>
+    </div>
+  </div>
+  <div id="feed"></div>
+  <div class="glass hud-weapon" id="weaponBox">
+    <span id="weaponName">Pistola</span>
+    <b class="rx-num" id="weaponAmmo">∞</b>
+  </div>
+  <div id="banner" class="hidden"></div>
+  <div id="toasts"></div>
+</div>
+
+<!-- Controles táctiles -->
+<div id="touch" class="hidden">
+  <button class="tbtn tbtn-dash" id="dashBtn" aria-label="Impulso"><svg class="ic"><use href="#i-bolt"/></svg></button>
+  <button class="tbtn tbtn-jump" id="jumpBtn" aria-label="Saltar"><svg class="ic"><use href="#i-up"/></svg></button>
+  <div class="thint thint-l">Mover · arriba salta</div>
+  <div class="thint thint-r">Apunta y dispara</div>
+</div>
+
+<!-- Menú principal -->
+<div id="menu" class="screen">
+  <div class="menu-grid">
+    <section class="hero">
+      <div class="hero-main">
+        <div class="hero-kicker">Arena 2D · stickmen</div>
+        <h1>Meiker<br>Stick Battle</h1>
+        <p>Corre, salta doble, agarra armas y baja a todo el que se mueva. Con tu parcero online o contra bots.</p>
+      </div>
+      <div class="hero-tab"><span class="brand">Riverojsx<b>.</b></span></div>
+    </section>
+
+    <section class="glass panel">
+      <label class="field">
+        <span>Tu nombre</span>
+        <input id="nameInput" maxlength="14" autocomplete="nickname" placeholder="Tu nombre, ej: Meiker">
+      </label>
+
+      <div class="seg" role="tablist" id="tabs">
+        <button role="tab" data-tab="solo" class="on"><svg class="ic"><use href="#i-bot"/></svg>Solo</button>
+        <button role="tab" data-tab="create"><svg class="ic"><use href="#i-users"/></svg>Crear sala</button>
+        <button role="tab" data-tab="join"><svg class="ic"><use href="#i-enter"/></svg>Unirse</button>
+      </div>
+
+      <div id="optsMatch">
+        <div class="opt opt-mode">
+          <span>Modo</span>
+          <div class="chips" id="modeChips">
+            <button data-v="ffa" class="on">Todos contra todos</button>
+            <button data-v="team">Equipo vs bots</button>
+          </div>
+        </div>
+        <div class="opt">
+          <span>Bots</span>
+          <div class="stepper">
+            <button id="botsMinus" aria-label="Menos bots">−</button>
+            <b class="rx-num" id="botsVal">5</b>
+            <button id="botsPlus" aria-label="Más bots">+</button>
+          </div>
+        </div>
+        <div class="opt opt-diff">
+          <span>Dificultad</span>
+          <div class="chips" id="diffChips">
+            <button data-v="0">Fácil</button>
+            <button data-v="1" class="on">Normal</button>
+            <button data-v="2">Pro</button>
+          </div>
+        </div>
+      </div>
+      <div id="optsJoin" hidden>
+        <label class="field">
+          <span>Código de la sala</span>
+          <input id="codeInput" maxlength="4" autocapitalize="characters" autocomplete="off" placeholder="ABCD" class="code-input">
+        </label>
+      </div>
+
+      <p class="note" id="menuNote">Partida offline: funciona hasta sin internet.</p>
+      <div class="actions">
+        <button class="btn-primary" id="playBtn"><svg class="ic"><use href="#i-play"/></svg><span id="playLabel">Jugar ya</span></button>
+        <button class="btn-glass" id="howBtn" aria-label="Cómo jugar"><svg class="ic"><use href="#i-info"/></svg><span class="lbl">Cómo jugar</span></button>
+        <button class="btn-glass" id="installBtn" hidden aria-label="Instalar app"><svg class="ic"><use href="#i-download"/></svg><span class="lbl">Instalar app</span></button>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- Pausa -->
+<div id="pause" class="screen modal-wrap hidden">
+  <div class="glass modal">
+    <h2>Pausa</h2>
+    <p class="muted" id="pauseInfo">La partida sigue corriendo para los demás.</p>
+    <div class="toggles">
+      <button class="toggle" data-set="sound"><svg class="ic"><use href="#i-sound"/></svg>Sonido<i></i></button>
+      <button class="toggle" data-set="vibe"><svg class="ic"><use href="#i-vibe"/></svg>Vibración<i></i></button>
+      <button class="toggle" data-set="assist"><svg class="ic"><use href="#i-target"/></svg>Ayuda al apuntar<i></i></button>
+      <button class="toggle" data-set="full"><svg class="ic"><use href="#i-expand"/></svg>Pantalla completa<i></i></button>
+    </div>
+    <button class="btn-primary" id="resumeBtn"><svg class="ic"><use href="#i-play"/></svg>Seguir jugando</button>
+    <button class="btn-glass" id="quitBtn"><svg class="ic"><use href="#i-x"/></svg>Salir al menú</button>
+  </div>
+</div>
+
+<!-- Tabla / resultados -->
+<div id="board" class="screen modal-wrap hidden">
+  <div class="glass modal modal-wide">
+    <div class="board-head">
+      <svg class="ic ic-lg"><use href="#i-trophy"/></svg>
+      <div>
+        <h2 id="boardTitle">Tabla</h2>
+        <p class="muted" id="boardSub"></p>
+      </div>
+      <button class="icon-btn glass" id="boardClose" aria-label="Cerrar"><svg class="ic"><use href="#i-x"/></svg></button>
+    </div>
+    <table class="table"><thead><tr><th>#</th><th>Jugador</th><th>Bajas</th><th>Muertes</th></tr></thead><tbody id="boardBody"></tbody></table>
+  </div>
+</div>
+
+<!-- Cómo jugar -->
+<div id="how" class="screen modal-wrap hidden">
+  <div class="glass modal modal-wide">
+    <div class="board-head">
+      <svg class="ic ic-lg"><use href="#i-info"/></svg>
+      <div><h2>Cómo jugar</h2><p class="muted">Gana quien llegue primero a 20 bajas (40 en equipo) o quien vaya arriba cuando se acabe el tiempo.</p></div>
+      <button class="icon-btn glass" id="howClose" aria-label="Cerrar"><svg class="ic"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="how-grid">
+      <div><h3>En el celular</h3>
+        <ul>
+          <li>Pulgar izquierdo: arrastra para moverte. Hacia arriba saltas, hacia abajo bajas de la plataforma.</li>
+          <li>Pulgar derecho: arrastra para apuntar y disparar. Un toque rápido dispara al rival más cercano.</li>
+          <li>Botón de flecha: salto (dos veces para doble salto). Botón de rayo: impulso.</li>
+        </ul></div>
+      <div><h3>En el computador</h3>
+        <ul>
+          <li>A / D o flechas para moverte, W o Espacio para saltar, S para bajar.</li>
+          <li>Mouse para apuntar, clic para disparar, Shift para el impulso.</li>
+          <li>Tab muestra la tabla, Esc pausa.</li>
+        </ul></div>
+      <div><h3>Armas y objetos</h3>
+        <ul>
+          <li>Subfusil, escopeta, rifle, francotirador y bazuca aparecen en cajas por el mapa.</li>
+          <li>Botiquín cura 50. Escudo absorbe parte del daño.</li>
+          <li>La escopeta y la bazuca te empujan: úsalas para volar.</li>
+        </ul></div>
+      <div><h3>Con tu parcero</h3>
+        <ul>
+          <li>Uno crea la sala y comparte el código de 4 letras.</li>
+          <li>El otro entra en Unirse y escribe el código. Pueden entrar hasta 8 personas.</li>
+          <li>Instala la app desde el menú para jugar en pantalla completa.</li>
+        </ul></div>
+    </div>
+  </div>
+</div>
+
+<div id="rotate" class="hidden">
+  <svg class="ic ic-xl"><use href="#i-rotate"/></svg>
+  <p>Gira el celular para jugar mejor</p>
+  <button class="btn-glass" id="rotateSkip">Seguir así</button>
+</div>
+<div id="loading" class="hidden"><div class="spinner"></div><p id="loadingText">Conectando…</p></div>
+
+<script src="/sim.js"></script>
+<script src="/game.js"></script>
+</body>
+</html>

@@ -1,8 +1,8 @@
 {
   "name": "meiker-battle-royale",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
-  "description": "Meiker Battle Royale 3D and WebSocket connection starter",
+  "description": "Meiker Stick Battle: shooter 2D de stickmen con salas online, bots y PWA instalable",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
