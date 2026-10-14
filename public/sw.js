@@ -1,5 +1,5 @@
 /* Service worker: guarda el juego para abrirlo rápido y jugar solo sin internet */
-const CACHE = 'meiker-br-v2';
+const CACHE = 'meiker-br-v3';
 const ASSETS = ['/', '/index.html', '/style.css', '/game3d.js', '/br.js', '/vendor/three.module.min.js', '/manifest.webmanifest', '/icons/icon.svg', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', (e) => {

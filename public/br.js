@@ -7,7 +7,7 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  const SIZE = 600, EYE = 1.6, RAD = 0.45, HEIGHT = 1.8, MAX_PLAYERS = 20;
+  const SIZE = 400, EYE = 1.6, RAD = 0.45, HEIGHT = 1.8, MAX_PLAYERS = 20;
   const PLANE_Y = 280, PLANE_SPEED = 55;
   const PH = { PLANE: 0, FALL: 1, CHUTE: 2, GROUND: 3 };
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -60,11 +60,11 @@
     { name: 'Pro', err: 0.025, react: 0.3, rate: 1.05, range: 120 },
   ];
   const ZONE = [
-    { wait: 55, shrink: 30, r: 250, dps: 2 },
-    { wait: 35, shrink: 25, r: 150, dps: 3 },
-    { wait: 30, shrink: 22, r: 85, dps: 5 },
-    { wait: 25, shrink: 20, r: 42, dps: 7 },
-    { wait: 20, shrink: 18, r: 16, dps: 10 },
+    { wait: 60, shrink: 30, r: 170, dps: 2 },
+    { wait: 40, shrink: 25, r: 105, dps: 3 },
+    { wait: 32, shrink: 22, r: 60, dps: 5 },
+    { wait: 26, shrink: 20, r: 30, dps: 7 },
+    { wait: 20, shrink: 18, r: 11, dps: 10 },
     { wait: 15, shrink: 15, r: 0, dps: 15 },
   ];
   const TEAM_COLORS = ['#F5B50A', '#4FD1FF', '#FF6FAE', '#3DDC84', '#FF8A3D', '#B18CFF', '#F5F5F4', '#7CF2E0', '#FF5A5F', '#C9E265'];
@@ -77,11 +77,11 @@
     this.seed = seed >>> 0;
     const r = rng(seed);
     this.towns = [];
-    for (let tries = 0; this.towns.length < 7 && tries < 600; tries++) {
-      const x = SIZE / 2 + (r() - 0.5) * SIZE * 0.66, z = SIZE / 2 + (r() - 0.5) * SIZE * 0.66;
+    for (let tries = 0; this.towns.length < 5 && tries < 600; tries++) {
+      const x = SIZE / 2 + (r() - 0.5) * SIZE * 0.64, z = SIZE / 2 + (r() - 0.5) * SIZE * 0.64;
       const h = this.rawHeight(x, z);
-      if (h < 3 || this.towns.some(t => Math.hypot(t.x - x, t.z - z) < 125)) continue;
-      this.towns.push({ x, z, r: 26 + r() * 16, base: h, name: TOWN_NAMES[(this.towns.length + Math.floor(r() * 3)) % TOWN_NAMES.length] });
+      if (h < 3 || this.towns.some(t => Math.hypot(t.x - x, t.z - z) < 95)) continue;
+      this.towns.push({ x, z, r: 22 + r() * 12, base: h, name: TOWN_NAMES[(this.towns.length + Math.floor(r() * 3)) % TOWN_NAMES.length] });
     }
     const used = new Set();
     this.towns.forEach(t => { while (used.has(t.name)) t.name = TOWN_NAMES[(TOWN_NAMES.indexOf(t.name) + 1) % TOWN_NAMES.length]; used.add(t.name); });
@@ -89,7 +89,7 @@
     this.boxes = []; this.buildings = []; this.trees = []; this.rocks = [];
     const lootSpots = [];
     for (const t of this.towns) {
-      const n = 4 + Math.floor(r() * 4);
+      const n = 4 + Math.floor(r() * 3);
       for (let i = 0, tries = 0; i < n && tries < 80; tries++) {
         const a = r() * Math.PI * 2, d = r() * t.r * 0.85;
         const w = 7 + r() * 6, dd = 7 + r() * 5, h = 4.5 + Math.floor(r() * 2) * 3.5 + r() * 1.5;
@@ -110,9 +110,9 @@
     const inTown = (x, z, m) => this.towns.some(t => Math.hypot(t.x - x, t.z - z) < t.r + m) || (this.camps || []).some(c => Math.hypot(c.x - x, c.z - z) < 16 + m);
     // Campamentos: cajas para cubrirse y mucho botín
     this.camps = []; this.crates = []; this.lamps = [];
-    for (let tries = 0; this.camps.length < 5 && tries < 500; tries++) {
-      const x = 50 + r() * (SIZE - 100), z = 50 + r() * (SIZE - 100);
-      if (this.rawHeight(x, z) < 3 || inTown(x, z, 30)) continue;
+    for (let tries = 0; this.camps.length < 4 && tries < 500; tries++) {
+      const x = 40 + r() * (SIZE - 80), z = 40 + r() * (SIZE - 80);
+      if (this.rawHeight(x, z) < 3 || inTown(x, z, 22) || this.camps.some(c => Math.hypot(c.x - x, c.z - z) < 60)) continue;
       const h = this.rawHeight(x, z);
       const camp = { x, z, name: CAMP_NAMES[this.camps.length % CAMP_NAMES.length] };
       this.camps.push(camp);
@@ -132,28 +132,28 @@
       for (let k = 0; k < n; k++) { const a = r() * Math.PI * 2, d = r() * t.r; this.lamps.push({ x: t.x + Math.cos(a) * d, z: t.z + Math.sin(a) * d }); }
     }
     this.lamps = this.lamps.filter(l => !this.boxes.some(b => l.x > b.minX - 0.5 && l.x < b.maxX + 0.5 && l.z > b.minZ - 0.5 && l.z < b.maxZ + 0.5));
-    for (let i = 0, tries = 0; i < 45 && tries < 2000; tries++) {
-      const x = 40 + r() * (SIZE - 80), z = 40 + r() * (SIZE - 80);
+    for (let i = 0, tries = 0; i < 30 && tries < 2000; tries++) {
+      const x = 30 + r() * (SIZE - 60), z = 40 + r() * (SIZE - 80);
       if (!land(x, z) || inTown(x, z, 4)) continue;
       const s = 1.4 + r() * 2.2, h = this.heightAt(x, z);
       const rock = { minX: x - s / 2, maxX: x + s / 2, minZ: z - s / 2, maxZ: z + s / 2, minY: h - 1, maxY: h + s * 0.75, type: 'r', s };
       this.rocks.push(rock); this.boxes.push(rock); i++;
     }
-    for (let i = 0, tries = 0; i < 150 && tries < 4000; tries++) {
+    for (let i = 0, tries = 0; i < 95 && tries < 4000; tries++) {
       const x = 30 + r() * (SIZE - 60), z = 30 + r() * (SIZE - 60);
       if (!land(x, z) || inTown(x, z, 8)) continue;
       const h = this.heightAt(x, z), s = 0.75 + r() * 0.5;
       const tree = { minX: x - 0.35, maxX: x + 0.35, minZ: z - 0.35, maxZ: z + 0.35, minY: h - 0.5, maxY: h + 9 * s, type: 't', s, x, z };
       this.trees.push(tree); this.boxes.push(tree); i++;
     }
-    for (let i = 0, tries = 0; i < 40 && tries < 1000; tries++) {
-      const x = 30 + r() * (SIZE - 60), z = 30 + r() * (SIZE - 60);
+    for (let i = 0, tries = 0; i < 30 && tries < 1000; tries++) {
+      const x = 25 + r() * (SIZE - 50), z = 25 + r() * (SIZE - 50);
       if (!land(x, z) || this.blocked(x, z)) continue;
       lootSpots.push({ x, z }); i++;
     }
     this.lootSpots = lootSpots.filter(s => s.x > 10 && s.x < SIZE - 10 && s.z > 10 && s.z < SIZE - 10 && !this.blocked(s.x, s.z) && this.heightAt(s.x, s.z) > 0.5);
     // Rejilla para buscar obstáculos rápido
-    this.cell = 24; this.gn = Math.ceil(SIZE / this.cell); this.grid = [];
+    this.cell = 20; this.gn = Math.ceil(SIZE / this.cell); this.grid = [];
     for (let i = 0; i < this.gn * this.gn; i++) this.grid.push([]);
     this.boxes.forEach((b, i) => {
       const x0 = clamp(Math.floor(b.minX / this.cell), 0, this.gn - 1), x1 = clamp(Math.floor(b.maxX / this.cell), 0, this.gn - 1);
@@ -162,18 +162,18 @@
     });
   }
   World.prototype.rawHeight = function (x, z) {
-    const n = fbm(x / 120, z / 120, this.seed);
-    const ridge = vnoise(x / 50, z / 50, this.seed + 99);
+    const n = fbm(x / 85, z / 85, this.seed);
+    const ridge = vnoise(x / 36, z / 36, this.seed + 99);
     const dx = (x - SIZE / 2) / (SIZE / 2), dz = (z - SIZE / 2) / (SIZE / 2);
     const d = Math.sqrt(dx * dx + dz * dz);
     const mask = 1 - smooth(0.68, 0.98, d);
-    return (Math.pow(n, 1.6) * 30 + ridge * 3 + 3) * mask - (1 - mask) * 9;
+    return (Math.pow(n, 1.6) * 22 + ridge * 2.5 + 3) * mask - (1 - mask) * 9;
   };
   World.prototype.heightAt = function (x, z) {
     let h = this.rawHeight(x, z);
     for (const t of this.towns) {
       const d = Math.hypot(t.x - x, t.z - z);
-      if (d < t.r + 22) { const w = 1 - smooth(t.r, t.r + 22, d); h = h * (1 - w) + t.base * w; }
+      if (d < t.r + 16) { const w = 1 - smooth(t.r, t.r + 16, d); h = h * (1 - w) + t.base * w; }
     }
     return h;
   };
@@ -398,11 +398,11 @@
     for (const [, list] of teams) {
       let best = null, bestD = -1;
       for (let i = 0; i < 60; i++) {
-        const x = 35 + r() * (SIZE - 70), z = 35 + r() * (SIZE - 70);
+        const x = 25 + r() * (SIZE - 50), z = 25 + r() * (SIZE - 50);
         if (W.heightAt(x, z) < 1.2 || W.blocked(x, z)) continue;
         let d = 999; for (const p of points) d = Math.min(d, Math.hypot(p.x - x, p.z - z));
         if (d > bestD) { bestD = d; best = { x, z }; }
-        if (d > 70 && i > 20) break;
+        if (d > 50 && i > 20) break;
       }
       best = best || W.toLand(SIZE / 2, SIZE / 2);
       points.push(best);
@@ -444,7 +444,7 @@
       tx = z.cx + Math.cos(a) * d; tz = z.cz + Math.sin(a) * d;
       if (this.world.heightAt(tx, tz) > 1.5) break;
     }
-    z.tx = clamp(tx, 40, SIZE - 40); z.tz = clamp(tz, 40, SIZE - 40); z.tr = st.r;
+    z.tx = clamp(tx, 30, SIZE - 30); z.tz = clamp(tz, 30, SIZE - 30); z.tr = st.r;
     z.t = st.wait; z.shrinking = false; z.dps = st.dps;
     if (z.stage > 0) this.events.push({ t: 'zone', s: z.stage });
   };
@@ -752,16 +752,20 @@
       }
     }
   };
-  Match.prototype.snapshot = function () {
+  // Foto del estado. Datos públicos primero; inventario solo para el equipo de quien la recibe.
+  // Los muertos van cortos: [id, -1, bajas, puesto]
+  Match.prototype.snapshot = function (viewerTeam) {
     const z = this.zone, r1 = v => Math.round(v * 10) / 10, r2 = v => Math.round(v * 100) / 100;
     return {
-      st: this.state === 'plane' ? 0 : this.state === 'play' ? 1 : 2, pt: r1(this.planeT), al: this.aliveCount(), at: this.aliveTeams().size,
+      st: this.state === 'play' ? 1 : 2, al: this.aliveCount(), at: this.aliveTeams().size,
       z: [r1(z.cx), r1(z.cz), r1(z.r), r1(z.tx), r1(z.tz), r1(z.tr), z.stage, Math.ceil(z.t), z.shrinking ? 1 : 0],
-      f: [...this.fighters.values()].map(f => [
-        f.id, r1(f.x), r1(f.y), r1(f.z), r2(f.yaw), r2(f.pitch), Math.max(0, Math.ceil(f.hp)), Math.ceil(f.sh), f.alive ? 1 : 0, f.ph,
-        f.slots[f.cur], f.kills, f.life, f.iv, f.slots[0], f.slots[1], f.ammo[0], f.ammo[1], f.cur, f.meds, f.shields, f.place,
-        r1(f.vx), r1(f.vy), r1(f.vz), f.grounded ? 1 : 0, f.mag[0], f.mag[1], f.reloadEnd ? 1 : 0, f.prot > 0 ? 1 : 0,
-      ]),
+      f: [...this.fighters.values()].map(f => {
+        if (!f.alive) return [f.id, -1, f.kills, f.place];
+        const a = [f.id, r1(f.x), r1(f.y), r1(f.z), r2(f.yaw), r2(f.pitch), Math.max(0, Math.ceil(f.hp)), Math.ceil(f.sh), 1, f.ph,
+          f.slots[f.cur], f.kills, f.life, r1(f.vx), r1(f.vy), r1(f.vz), f.grounded ? 1 : 0, f.reloadEnd ? 1 : 0, f.prot > 0 ? 1 : 0, f.place];
+        if (viewerTeam == null || f.team === viewerTeam) a.push(f.iv, f.slots[0], f.slots[1], f.ammo[0], f.ammo[1], f.cur, f.meds, f.shields, f.mag[0], f.mag[1]);
+        return a;
+      }),
     };
   };
   Match.prototype.drain = function () { const e = this.events; this.events = []; return e; };
