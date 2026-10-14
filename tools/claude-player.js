@@ -10,7 +10,7 @@ const wsUrl = base.replace(/^http/, "ws").replace(/\/$/, "") + "/ws";
 // Si hay proxy de salida (HTTPS_PROXY), conectar a través de él
 let agent;
 const proxy = process.env.HTTPS_PROXY || process.env.https_proxy;
-if (proxy) { try { const { HttpsProxyAgent } = require("https-proxy-agent"); agent = new HttpsProxyAgent(proxy); } catch (_) {} }
+if (proxy && wsUrl.startsWith("wss:")) { try { const { HttpsProxyAgent } = require("https-proxy-agent"); agent = new HttpsProxyAgent(proxy); } catch (_) {} }
 const ws = new WebSocket(wsUrl, agent ? { agent } : {});
 ws.on("error", (e) => { console.log("Error de conexión:", e.message); process.exit(1); });
 let myId = null, me = null, map = null, seed = null, roster = new Map(), others = new Map(), pickups = [], st = 0, mode = "ffa";
@@ -64,7 +64,7 @@ ws.on("message", (raw) => {
     }
     if (ev.t === "roster") { roster = new Map(ev.l.map(r => [r[0], r])); }
     if (ev.t === "hit" && ev.id === myId) { me.vx += ev.kx || 0; me.vy += ev.ky || 0; me.lastAttacker = ev.by; }
-    if (ev.t === "kill" && ev.k === myId) console.log("Baja a", roster.get(ev.v)?.[1]);
+    if (ev.t === "kill" && ev.k === myId) { console.log("Baja a", roster.get(ev.v)?.[1]); if (process.env.NINJA) { spinT = 0.8; me.jbuf = S.PHYS.buffer; } }
     if (ev.t === "kill" && ev.v === myId) { me.alive = false; console.log("Me bajó", roster.get(ev.k)?.[1] || "el piso"); }
   }
   if (m.sd !== seed) { seed = m.sd; map = S.generateMap(seed); me.alive = false; }
@@ -98,13 +98,42 @@ function dodge() {
     me.dashDir = Math.random() < 0.5 ? -1 : 1;
   } else if (me.onGround || me.jumps < 2) me.jbuf = S.PHYS.buffer;
 }
-let hopT = 0;
+let hopT = 0, ninjaT = 3, spinT = 0;
+// Modo ninja (NINJA=1): cada pocos segundos se teletransporta a la espalda del rival más cercano
+function ninjaStep(dt) {
+  ninjaT -= dt;
+  if (spinT > 0) { spinT -= dt; me.aim += dt * 18; return true; }
+  if (ninjaT > 0) return false;
+  ninjaT = 2.5 + Math.random() * 2.5;
+  let best = null, bd = Infinity;
+  for (const o of others.values()) {
+    if (o === me || !o.alive || o.shield || !fake.isEnemy(me, o)) continue;
+    const d = Math.hypot(o.x - me.x, o.y - me.y);
+    if (d < bd) { bd = d; best = o; }
+  }
+  if (!best) return false;
+  const back = Math.cos(best.aim) >= 0 ? -1 : 1;
+  for (const off of [70 * back, -70 * back]) {
+    const x = best.x + off, y = best.y;
+    if (x < 20 || x > map.W - 20 || S.overlapSolid(map, x - 12, y - 60, x + 12, y - 0.5)) continue;
+    Object.assign(me, { x, y, vx: 0, vy: 0 });
+    me.aim = Math.atan2(best.y - 34 - (y - S.SHOULDER), best.x - x);
+    lastShot = -9;
+    send({ t: "st", x: me.x, y: me.y, vx: 0, vy: 0, a: me.aim, l: me.life, g: 1, d: 0 });
+    console.log("Teletransporte detrás de", roster.get(best.id)?.[1]);
+    return false;
+  }
+  return false;
+}
 setInterval(() => {
   const dt = 1 / 30; clock += dt;
   if (!me || !me.alive || !map) return;
   // Movimiento evasivo constante: saltitos impredecibles
   hopT -= dt;
   if (hopT <= 0) { hopT = 0.35 + Math.random() * 0.6; if (me.onGround && Math.random() < 0.6) me.jbuf = S.PHYS.buffer; }
-  S.Room.prototype.updateBot.call(fake, me, dt);
+  if (process.env.NINJA && ninjaStep(dt)) {
+    // Giro de celebración en el aire después de cada baja
+    S.stepFighter(me, { mx: 0, jump: true }, dt, map);
+  } else S.Room.prototype.updateBot.call(fake, me, dt);
   send({ t: "st", x: me.x, y: me.y, vx: me.vx, vy: me.vy, a: me.aim, l: me.life, g: me.onGround ? 1 : 0, d: me.dashT > 0 ? 1 : 0 });
 }, 1000 / 30);
