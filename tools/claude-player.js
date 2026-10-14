@@ -16,6 +16,11 @@ ws.on("error", (e) => { console.log("Error de conexión:", e.message); process.e
 let myId = null, me = null, map = null, seed = null, roster = new Map(), others = new Map(), pickups = [], st = 0, mode = "ffa";
 let lastShot = -9, clock = 0;
 
+// Modo turbo (TURBO=1): solo cambia la física de este jugador, el servidor confía en su posición
+if (process.env.TURBO) {
+  Object.assign(S.PHYS, { maxSpeed: S.PHYS.maxSpeed * 2.2, accel: S.PHYS.accel * 2.5, airAccel: S.PHYS.airAccel * 2.5, jumpV: S.PHYS.jumpV * 1.3, djumpV: S.PHYS.djumpV * 1.3, dashSpeed: S.PHYS.dashSpeed * 1.8, dashCd: 0.35 });
+}
+
 // Nivel "super profesional": más preciso y rápido que el Pro normal
 S.DIFF[3] = { name: "Super Pro", err: 0.015, react: 0.08, turn: 22, lead: 1, rateMul: 1 };
 
