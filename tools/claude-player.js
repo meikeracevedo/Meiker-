@@ -11,9 +11,12 @@ const ws = new WebSocket(wsUrl);
 let myId = null, me = null, map = null, seed = null, roster = new Map(), others = new Map(), pickups = [], st = 0, mode = "ffa";
 let lastShot = -9, clock = 0;
 
+// Nivel "super profesional": más preciso y rápido que el Pro normal
+S.DIFF[3] = { name: "Super Pro", err: 0.015, react: 0.08, turn: 22, lead: 1, rateMul: 1 };
+
 // Sala "falsa": reutiliza la IA de los bots, pero los disparos se envían al servidor
 const fake = {
-  diff: 2, get map() { return map; }, get state() { return st === 0 ? "play" : "end"; }, get mode() { return mode; },
+  diff: 3, get map() { return map; }, get state() { return st === 0 ? "play" : "end"; }, get mode() { return mode; },
   get time() { return clock; }, get pickups() { return pickups; }, fighters: others,
   isEnemy: S.Room.prototype.isEnemy,
   fire(f, aim, seq, sd) {
